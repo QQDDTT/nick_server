@@ -12,16 +12,16 @@ import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter;
 
-import com.dream.nick_server.handler.EchoHandler;
+import com.dream.nick_server.handler.ChatHandler;
 
 @Configuration
 public class WebSocketConfiguration {
 
     @Autowired
     @Bean
-    public HandlerMapping webSocketMapping(final EchoHandler echoHandler) {
+    public HandlerMapping webSocketMapping(final ChatHandler handler) {
         final Map<String, WebSocketHandler> map = new HashMap<>();
-        map.put("/echo", echoHandler);
+        map.put("/echo", handler);
 
         final SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();
         mapping.setOrder(Ordered.HIGHEST_PRECEDENCE);

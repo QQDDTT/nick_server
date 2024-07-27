@@ -18,12 +18,12 @@ public class RouterConfig {
                 .route(RequestPredicates.GET("/")
                         .and(RequestPredicates.accept(MediaType.TEXT_PLAIN)),
                         handler::index)
-                .andRoute(RequestPredicates.GET("/home")
+                .andRoute(RequestPredicates.GET("/{path}")
                         .and(RequestPredicates.accept(MediaType.TEXT_PLAIN)),
-                        handler::home)
-                .andRoute(RequestPredicates.GET("/chat")
+                        handler::get)
+                .andRoute(RequestPredicates.POST("/{path}")
                         .and(RequestPredicates.accept(MediaType.TEXT_PLAIN)),
-                        handler::chat)
+                        handler::post)
                 ;
     }
 }

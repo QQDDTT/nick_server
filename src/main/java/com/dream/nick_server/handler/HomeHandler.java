@@ -16,17 +16,19 @@ public class HomeHandler {
             .render("index");
     }
 
-    public Mono<ServerResponse> home(ServerRequest request) {
+    public Mono<ServerResponse> get(ServerRequest request) {
+        String path = request.pathVariable("path");
         return ServerResponse
             .ok()
             .contentType(MediaType.TEXT_HTML)
-            .render("home");
+            .render(path);
     }
 
-    public Mono<ServerResponse> chat(ServerRequest request) {
+    public Mono<ServerResponse> post(ServerRequest request) {
+        String path = request.pathVariable("path");
         return ServerResponse
             .ok()
             .contentType(MediaType.TEXT_HTML)
-            .render("chat");
+            .render(path);
     }
 }

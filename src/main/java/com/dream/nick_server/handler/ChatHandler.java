@@ -7,7 +7,7 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Mono;
 
 @Component
-public class EchoHandler implements WebSocketHandler {
+public class ChatHandler implements WebSocketHandler {
     @SuppressWarnings("null")
     @Override
     public Mono<Void> handle(final WebSocketSession session) {
