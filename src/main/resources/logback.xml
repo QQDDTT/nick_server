@@ -3,46 +3,91 @@
     <!-- 设置上下文名称 -->
     <contextName>${log.context.name}</contextName>
 
+    <property name="PROJECT_NAME" value="NICK SERVER" />
     <!--定义日志文件的存储地址 勿在 LogBack 的配置中使用相对路径-->
-    <property name="LOG_PATH" value="/LOG" />
+    <property name="LOG_HOME" value="C:\\Users\\hunen\\source\\logs" />
     <property name="log.context.name" value="MyApp" />
     <property name="log.charset" value="UTF-8" />
     <!-- Log4j: [S][%d{yyyyMMdd HH:mm:ss}][%-5p][%C:%L] - %m%n -->
     <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->
-    <property name="log.pattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n" />
+    <property name="log.pattern" value="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] [%thread] [%logger{50}] [%M] [%line] - %msg%n" />
     <property name="log.pattern.short" value="%date{yyyyMMdd HH:mm:ss.SSS}-%msg%n" />
     <!-- 彩色日志格式 -->
     <property name="log.pattern.color" value="${CONSOLE_LOG_PATTERN:-%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}" />
-
-    <!-- 控制台输出 -->
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder charset="${log.charset}">
-            <pattern>${log.pattern}</pattern>
-        </encoder>
-    </appender>
-    <appender name="STDOUT_SHORT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder charset="${log.charset}">
-            <pattern>${log.pattern.short}</pattern>
-        </encoder>
-    </appender>
-    <!-- 彩色日志 -->
     <!-- 彩色日志依赖的渲染类 -->
     <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter" />
     <conversionRule conversionWord="wex" converterClass="org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter" />
     <conversionRule conversionWord="wEx" converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter" />
-    <!-- Console 输出设置 -->
-    <appender name="STDOUT_COLOR" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder charset="${log.charset}">
+    <!-- 控制台输出 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <withJansi>false</withJansi>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <pattern>${log.pattern.color}</pattern>
+            <charset>${log.charset}</charset>
         </encoder>
     </appender>
 
-    <!--mybatis log configure-->
-    <!-- <logger name="com.apache.ibatis" level="TRACE"/> -->
+    <!-- ERROR日志文件,记录错误日志 -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${PROJECT_NAME}/error.log</file>
+        <!-- 过滤器，只打印ERROR级别的日志 -->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!--日志文件输出的文件名-->
+            <fileNamePattern>${LOG_HOME}/${PROJECT_NAME}/%d{yyyy-MM-dd}/error.%i.zip</fileNamePattern>
+            <!--日志文件保留天数-->
+            <maxHistory>30</maxHistory>
+            <!--日志文件最大的大小-->
+            <maxFileSize>10MB</maxFileSize>
+        </rollingPolicy>
+        
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${log.pattern}</pattern>
+            <charset>${log.charset}</charset>
+        </encoder>
+    </appender>
+    <!-- INFO日志文件，用于记录重要日志信息 -->
+    <appender name="INFO_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${PROJECT_NAME}/info.log</file>
+        <!-- 过滤器，只打印INFO级别的日志 -->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!--日志文件输出的文件名-->
+            <fileNamePattern>${LOG_HOME}/${PROJECT_NAME}/%d{yyyy-MM-dd}/info.%i.zip</fileNamePattern>
+            <!--日志文件保留天数-->
+            <maxHistory>30</maxHistory>
+            <!--日志文件最大的大小-->
+            <maxFileSize>10MB</maxFileSize>
+        </rollingPolicy>
+        
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${log.pattern}</pattern>
+            <charset>${log.charset}</charset>
+        </encoder>
+    </appender>
  
 
     <!-- 日志输出级别 -->
     <root level="INFO">
-        <appender-ref ref="STDOUT_COLOR" />
+        <appender-ref ref="CONSOLE" />
     </root>
+
+    <!-- 输出error信息到文件-->
+    <logger name="error" additivity="true">
+        <appender-ref ref="ERROR_FILE"/>
+    </logger>
+ 
+    <!-- 输出info信息到文件-->
+    <logger name="info" additivity="true">
+        <appender-ref ref="INFO_FILE"/>
+    </logger>
+ 
 </configuration>
