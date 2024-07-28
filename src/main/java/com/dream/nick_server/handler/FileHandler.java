@@ -22,7 +22,7 @@ public class FileHandler implements WebSocketHandler{
         LOGGER.info("[FILE SOCKET]:" + session.getId());
         return session.send(
                 session.receive()
-                        .map(msg -> session.textMessage(filesConsole.func(msg.getPayloadAsText())))
+                        .map(msg -> session.textMessage(filesConsole.func(msg.getPayloadAsText()).toString()))
                     );
     }
 }

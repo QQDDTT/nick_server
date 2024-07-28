@@ -3,6 +3,7 @@ package com.dream.nick_server.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.function.server.RequestPredicate;
@@ -26,14 +27,13 @@ public class RouterConfig {
     @Bean
     public RouterFunction<?> routeCity(HomeHandler handler) {
         return RouterFunctions
-                .route(notWebSocket().and(RequestPredicates.GET("/"))
-                        .and(RequestPredicates.accept(MediaType.TEXT_HTML)),
-                        handler::index)
-                .andRoute(notWebSocket().and(RequestPredicates.GET("/*"))
+                .route(isHttp()
+                        .and(RequestPredicates.method(HttpMethod.GET))
                         .and(RequestPredicates.accept(MediaType.TEXT_HTML)),
                         handler::get)
-                .andRoute(notWebSocket().and(RequestPredicates.POST("/*"))
-                        .and(RequestPredicates.accept(MediaType.TEXT_PLAIN)),
+                .andRoute(isHttp()
+                        .and(RequestPredicates.method(HttpMethod.POST))
+                        .and(RequestPredicates.accept(MediaType.TEXT_HTML)),
                         handler::post);
     }
 
@@ -54,7 +54,7 @@ public class RouterConfig {
         return new WebSocketHandlerAdapter();
     }
 
-    private RequestPredicate notWebSocket() {
-        return request -> !"ws".equalsIgnoreCase(request.uri().getScheme()) && !"wss".equalsIgnoreCase(request.uri().getScheme());
+    private RequestPredicate isHttp() {
+        return request -> "http".equalsIgnoreCase(request.uri().getScheme()) || "https".equalsIgnoreCase(request.uri().getScheme());
     }
 }

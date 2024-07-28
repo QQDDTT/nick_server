@@ -1,8 +1,5 @@
 package com.dream.nick_server.handler;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -15,19 +12,9 @@ import reactor.core.publisher.Mono;
 @Component
 public class HomeHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(HomeHandler.class);
-    
-    public Mono<ServerResponse> index(ServerRequest request) {
-        LOGGER.info("Index");
-        Map<String, Object> model = new HashMap<>();
-        model.put("message", "Welcome to FreeMarker with Spring WebFlux!");
-        return ServerResponse
-            .ok()
-            .contentType(MediaType.TEXT_HTML)
-            .render("index",model);
-    }
 
     public Mono<ServerResponse> get(ServerRequest request) {
-        String path = request.path();
+        String path = request.path().equals("") ? "index" : request.path();
         LOGGER.info("[GET]: " + path);
         request.queryParams().forEach((key, value) -> LOGGER.info("Query Param: " + key + " = " + value));
         return ServerResponse
