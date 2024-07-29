@@ -7,24 +7,37 @@
   <body>
     <a href="/home">HOME</a>
     <div id="status"></div>
-    <button onclick="send('FilesConsole_read')">READ</button>
-    <button onclick="send('FilesConsole_read_template')">READ_TEMPLATE</button>
     <button onclick="disconnect()">CLOSE</button>
     <button onclick="connect()">CONNECT</button>
-    <div id="files"></div>
+    <br/>
+    <label>Search:</label>
+    <input id="cond" value=".html"/>
+    <button onclick="send('SEARCH_FILES')">SEARCH</button>
+    <button onclick="send('EACH_FILES')">EACH</button>
+    <br/>
+    <lable>Files</lable>
+    <select id="files_list"></select>
+    <input id="file_name"/>
+    <button onclick="send('CREATE_FILE')">CREATE</button>
+    <button onclick="send('DELETE_FILE')">DELETE</button>
+    <button onclick="send('READ_FILE')">READ</button>
+    <button onclick="send('WRITE_FILE')">WRITE</button>
+    <div id="file_window">
+        <textarea id="text" aria-multiline="true"></textarea>
+    </div>
   </body>
   <script type="text/javascript">
-    var ws = null;
+    var ws = new WebSocket("ws://" + location.host + "/file_connect");;
+    const STATUS = document.getElementById("status");
+    const FILES_LIST = document.getElementById("files_list");
+    const COND = document.getElementById("cond");
+    const FILE_NAME = document.getElementById("file_name");
+    const TEXT = document.getElementById("text");
     function connect() {
-        ws = new WebSocket("ws://" + location.host + "/FilesConsole_path");
-        ws.onopen = function () {
-            document.getElementById("status").innerText = "创建链接成功, 开始发送消息";
-        };
-        ws.onmessage = function (event) {
-            document.getElementById("files").innerText = event.data;
-        };
+        ws.onopen
+        STATUS.innerText = "链接成功";
         ws.onclose = function () {
-            document.getElementById("status").innerText = "链接断开, 重连";
+            STATUS.innerText = "重连...";
             setTimeout(function () {
                 if(ws != null){
                     connect();
@@ -33,18 +46,53 @@
         };
     }
     function send(msg){
-        if (ws != null) {
-            ws.send(msg);
-        }else{
+        if (ws == null) {
             connect();
-            ws.send(msg);
         }
+        STATUS.innerText = "发送消息...";
+        var msgObj = {"enum":msg,"path":FILES_LIST.value};
+        if(msg == "SEARCH_FILES"){
+            msgObj["value"] = COND.value;
+        }else if(msg == "CREATE_FILE"){
+            msgObj["value"] = FILE_NAME.value;
+        }else if(msg == "WRITE_FILE"){
+            msgObj["value"] = TEXT.value;
+        }else{
+            msgObj["value"] = "";
+        }
+        ws.send(JSON.stringify(msgObj));
+        ws.onmessage = function (event) {
+            resObj = JSON.parse(event.data);
+            if(msg == "EACH_FILES" || msg == "SEARCH_FILES"){
+                FILES_LIST.innerHTML = "";
+                for(file in resObj){
+                    var op = document.createElement("option");
+                    op.value = resObj[file];
+                    op.innerText = file;
+                    FILES_LIST.appendChild(op);
+                }
+            }else if(msg == "READ_FILE"){;
+                TEXT.style = "width:1000px;height:800px;";
+                
+                var text = "";
+                for(line in resObj){
+                    text += resObj[line] + "\n";
+                }
+                TEXT.innerText = text;
+            }
+            STATUS.innerText = "发送成功";
+        };
     }
     function disconnect() {
         if (ws != null) {
             ws.close();
             ws = null;
+            STATUS.innerText = "链接已断开...";
         }
+    }
+    connect();
+    FILES_LIST.onchange = function(){
+        FILE_NAME.value = FILES_LIST.value;
     }
     </script>
 </html>

@@ -10,11 +10,11 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
 @Component
-public class HomeHandler {
-    private static final Logger LOGGER = LoggerFactory.getLogger(HomeHandler.class);
+public class SuccessHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SuccessHandler.class);
 
     public Mono<ServerResponse> get(ServerRequest request) {
-        String path = request.path().equals("") ? "index" : request.path();
+        String path = request.path().equals("/") ? "index" : request.path();
         LOGGER.info("[GET]: " + path);
         request.queryParams().forEach((key, value) -> LOGGER.info("Query Param: " + key + " = " + value));
         return ServerResponse
