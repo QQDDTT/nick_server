@@ -1,19 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration debug="false">
-    <!-- 设置上下文名称 -->
     <contextName>${log.context.name}</contextName>
     
-    <!-- 定义日志文件的存储地址，使用绝对路径 -->
     <springProperty name="LOG_HOME" source="logging.file.name" />
     <property name="PROJECT_NAME" value="NICK_SERVER" />
-
     <property name="log.charset" value="UTF-8" />
-    <!-- 日志输出格式 -->
     <property name="log.pattern" value="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] [%thread] [%logger{50}] [%M] [%line] - %msg%n" />
     <property name="log.pattern.short" value="%date{yyyyMMdd HH:mm:ss.SSS}-%msg%n" />
-    <!-- 彩色日志格式 -->
     <property name="log.pattern.color" value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%-5p) %clr(%t){magenta} %clr(---){faint} %clr([%logger{50}]){cyan} %clr(:){faint} %m%n%wEx" />
-    <!-- 彩色日志依赖的渲染类 -->
+
     <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter" />
     <conversionRule conversionWord="wex" converterClass="org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter" />
     <conversionRule conversionWord="wEx" converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter" />
@@ -39,6 +34,29 @@
             <fileNamePattern>${LOG_HOME}/${PROJECT_NAME}/error.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxHistory>30</maxHistory>
             <maxFileSize>10MB</maxFileSize>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${log.pattern}</pattern>
+            <charset>${log.charset}</charset>
+        </encoder>
+    </appender>
+
+    <!-- WARN日志文件 -->
+    <appender name="WARN_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${PROJECT_NAME}/warn.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/${PROJECT_NAME}/warn.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <maxFileSize>10MB</maxFileSize>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <pattern>${log.pattern}</pattern>
@@ -58,6 +76,8 @@
             <fileNamePattern>${LOG_HOME}/${PROJECT_NAME}/info.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxHistory>30</maxHistory>
             <maxFileSize>10MB</maxFileSize>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <pattern>${log.pattern}</pattern>
@@ -65,11 +85,33 @@
         </encoder>
     </appender>
 
-    <!-- 日志输出级别 -->
+    <!-- DEBUG日志文件 -->
+    <appender name="DEBUG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${PROJECT_NAME}/debug.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>DEBUG</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/${PROJECT_NAME}/debug.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <maxFileSize>10MB</maxFileSize>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${log.pattern}</pattern>
+            <charset>${log.charset}</charset>
+        </encoder>
+    </appender>
+
     <root level="INFO">
         <appender-ref ref="CONSOLE" />
         <appender-ref ref="ERROR_FILE" />
+        <appender-ref ref="WARN_FILE" />
         <appender-ref ref="INFO_FILE" />
+        <appender-ref ref="DEBUG_FILE" />
     </root>
 
     <!-- 输出error信息到文件 -->
@@ -77,9 +119,18 @@
         <appender-ref ref="ERROR_FILE"/>
     </logger>
 
+    <!-- 输出warn信息到文件 -->
+    <logger name="warn" level="WARN" additivity="false">
+        <appender-ref ref="WARN_FILE"/>
+    </logger>
+
     <!-- 输出info信息到文件 -->
     <logger name="info" level="INFO" additivity="false">
         <appender-ref ref="INFO_FILE"/>
     </logger>
 
+    <!-- 输出debug信息到文件 -->
+    <logger name="debug" level="DEBUG" additivity="false">
+        <appender-ref ref="DEBUG_FILE"/>
+    </logger>
 </configuration>
