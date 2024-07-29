@@ -2,10 +2,11 @@
 <configuration debug="false">
     <!-- 设置上下文名称 -->
     <contextName>${log.context.name}</contextName>
-
-    <property name="PROJECT_NAME" value="NICK_SERVER" />
+    
     <!-- 定义日志文件的存储地址，使用绝对路径 -->
-    <property name="LOG_HOME" value="C:/Users/hunen/source/logs" />
+    <springProperty name="LOG_HOME" source="logging.file.name" />
+    <property name="PROJECT_NAME" value="NICK_SERVER" />
+
     <property name="log.charset" value="UTF-8" />
     <!-- 日志输出格式 -->
     <property name="log.pattern" value="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] [%thread] [%logger{50}] [%M] [%line] - %msg%n" />
