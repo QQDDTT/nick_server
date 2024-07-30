@@ -14,7 +14,7 @@ import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter;
 
-import com.dream.nick_server.filesManageSystem.FilesManagement;
+import com.dream.nick_server.filesManageSystem.FilesManagementServer;
 import com.dream.nick_server.handler.ChatHandler;
 import com.dream.nick_server.handler.FileHandler;
 import com.dream.nick_server.handler.SuccessHandler;
@@ -28,7 +28,9 @@ public class RouterConfig {
     @Bean
     public RouterFunction<?> routeCity(SuccessHandler handler) {
         return RouterFunctions
-                .route(isHttp()
+                .route(RequestPredicates.GET("/favicon.ico"),handler::favicon)
+                .andRoute(RequestPredicates.GET("/static/**"),handler::getStatic)
+                .andRoute(isHttp()
                         .and(RequestPredicates.method(HttpMethod.GET))
                         .and(RequestPredicates.accept(MediaType.TEXT_HTML)),
                         handler::get)
@@ -42,7 +44,7 @@ public class RouterConfig {
     public HandlerMapping webSocketMapping(final ChatHandler chatHandler, final FileHandler fileHandler) {
         final Map<String, WebSocketHandler> map = new HashMap<>();
         map.put("/echo", chatHandler);
-        map.put(FilesManagement.URL, fileHandler);
+        map.put(FilesManagementServer.CONNECT, fileHandler);
 
         final SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();
         mapping.setOrder(Ordered.HIGHEST_PRECEDENCE);
