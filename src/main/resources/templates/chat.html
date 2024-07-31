@@ -2,47 +2,48 @@
 <html lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="/static/js/common/Constant.js"></script>
+    <script type="text/javascript" src="/static/js/pageAction.js" ></script>
+    <script type="text/javascript" src="/static/js/chatWebSocket.js"></script>
     <title>echo Test</title>
   </head>
   <body>
-    <a href="/home">HOME</a>
-    <button onclick="connect()">CONNECT</button>
-    <button onclick="disconnect()">CLOSE</button>
-    <input type="text" id="hello" value="PING"/>
-    <div id="msg"></div>
+    <h2>CHAT</h2>
+    <button onclick="action(HOME_URL)">HOME</button>
+    <label>STATUS:</label>
     <div id="status"></div>
+    <br/>
+    <button onclick="open()">CONNECT</button>
+    <button onclick="close()">CLOSE</button>
+    <br/>
+    <label>SEND:</label>
+    <input type="text" id="send" value="PING"/>
+    <br/>
+    <label>RECOVER:</label>
+    <div id="recover"></div>
+    
   </body>
   <script type="text/javascript">
-    var ws = null;
-    var meter,myVar;
-    function connect() {
-        ws = new WebSocket("ws://" + location.host + "/echo");
-        ws.onopen = function () {
-            document.getElementById("status").innerText = "创建链接成功, 开始发送消息";
-            setInterval(function () {
-                if (ws != null){
-                    ws.send(document.getElementById("hello").value);
-                }
-            }, 1000);
-        };
-        ws.onmessage = function (event) {
-            document.getElementById("msg").innerText = event.data;
-        };
-        ws.onclose = function () {
-            document.getElementById("status").innerText = "链接断开, 重连";
-            setTimeout(function () {
-                if(ws != null){
-                    connect();
-                }
-            }, 1000);
-        };
+    function open(){
+        connect(
+            function(){
+                return document.getElementById("send").value;
+            },
+            function(msg){
+                document.getElementById("recover").innerText = msg;
+            },
+            function(status){
+                document.getElementById("status").innerText = status;
+            }
+        );
     }
-    function disconnect() {
-        if (ws != null) {
-            ws.close();
-            ws = null;
-        }
+    function close(){
+        dissconnect(
+            function(status){
+                document.getElementById("status").innerText = status;
+            }
+        );
     }
-    connect();
-</script>
+    open();
+  </script>
 </html>

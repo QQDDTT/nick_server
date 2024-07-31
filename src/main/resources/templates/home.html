@@ -3,11 +3,13 @@
   <head>
     <title>HOME</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="/static/js/common/Constant.js"></script>
+    <script type="text/javascript" src="/static/js/pageAction.js" ></script>
   </head>
   <body>
     <h2>Home Page</h2>
-    <a href="/chat">chat</a>
-    <a href="/files">files</a>
-    <a href="/guest/demo">demo</a>
+    <button onclick="action(CHAT_URL)">CHAT</button>
+    <button onclick="action(FILES_URL)">FILES</button>
+    <button onclick="action(GUEST_DEMO_URL)">DEMO</button>
   </body>
 </html>

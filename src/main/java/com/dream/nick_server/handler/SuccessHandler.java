@@ -28,7 +28,7 @@ public class SuccessHandler {
     }
 
     public Mono<ServerResponse> favicon(ServerRequest request){
-        Resource resource = new ClassPathResource("static/favicon.ico");
+        Resource resource = new ClassPathResource("static/favicon/favicon.ico");
         return ServerResponse
             .ok()
             .contentType(MediaType.valueOf("image/x-icon"))
@@ -44,7 +44,7 @@ public class SuccessHandler {
         Resource resource = new ClassPathResource(path);
         return ServerResponse
             .ok()
-            .contentType(MediaType.IMAGE_PNG)
+            .contentType(getMediaType(path))
             .bodyValue(resource)
             .onErrorResume(e -> {
                 LOGGER.error("Error rendering path: " + path, e);
@@ -62,5 +62,21 @@ public class SuccessHandler {
                 LOGGER.error("Error rendering path: " + path, e);
                 return ServerResponse.notFound().build();
             });
+    }
+
+    private MediaType getMediaType(String path){
+        if(path.endsWith(".js")){
+            return MediaType.valueOf("application/javascript");
+        }else if (path.endsWith(".css")){
+            return MediaType.valueOf("text/css");
+        }else if(path.endsWith(".png")){
+            return MediaType.IMAGE_PNG;
+        }else if(path.endsWith(".gif")){
+            return MediaType.IMAGE_GIF;
+        }else if(path.endsWith("jpeg")){
+            return MediaType.IMAGE_JPEG;
+        }else{
+            return MediaType.ALL;
+        }
     }
 }
