@@ -1,64 +1,77 @@
 const CONNECT_STATUS = "创建链接成功, 开始发送消息";
-const RECOVER_STATUS = "链接断开, 重连..."
-const CLOSE_STATUS = "链接已断开"
+const RECOVER_STATUS = "链接断开, 重连...";
+const CLOSE_STATUS = "链接已断开";
 const REFLESH_TIME = 1000;
 
 var ChatWS = (function(){
     var ws;
     var loopSend;
     var recover;
-    function ChatWS(getSendMsgFunc,showDataFunc,statusFunc){
-        if(typeof getSendMsgFunc != "function" || typeof showDataFunc != "function"){
-            console.error("Arguments must be function !");
+
+    function ChatWS(getSendMsgFunc, showDataFunc, statusFunc) {
+        if (typeof getSendMsgFunc !== "function" || typeof showDataFunc !== "function") {
+            console.error("Arguments must be function!");
             return;
         }
-        ChatWS.prototype.getSendMsgFunc = function(){
-            return getSendMsgFunc();
-        }
-        ChatWS.prototype.showDataFunc = function(msg){
-            showDataFunc(msg);
-        }
-        if(typeof statusFunc != "function"){
-            ChatWS.prototype.statusFunc = function(status){
-                console.info("[STATUS]" + status);
-            };
-        }else{
-            ChatWS.prototype.statusFunc = function(status){
-                statusFunc(status);
-            }
-        }
-        this.ws = new WebSocket(CHAT_CONNECT);
-    };
-    ChatWS.prototype.connect = function(){
-        var this_this = this;
-        this_this.statusFunc(CONNECT_STATUS);
-        this_this.ws.onopen = function () {
-            this_this.loopSend = setInterval(function () {
-                this_this.ws.send(this_this.getSendMsgFunc());
+        this.getSendMsgFunc = getSendMsgFunc;
+        this.showDataFunc = showDataFunc;
+        this.statusFunc = typeof statusFunc === "function" ? statusFunc : function(status) {
+            console.info("[STATUS] " + status);
+        };
+        this.connect();
+    }
+
+    ChatWS.prototype.connect = function() {
+        var self = this;
+        self.statusFunc(CONNECT_STATUS);
+        self.ws = new WebSocket(CHAT_CONNECT);
+
+        self.ws.onopen = function() {
+            console.log('[连接已建立]');
+            self.loopSend = setInterval(function() {
+                var msg = self.getSendMsgFunc();
+                if (msg) {
+                    self.ws.send(msg);
+                } else {
+                    console.warn('[警告] 未发送消息');
+                }
             }, REFLESH_TIME);
         };
-        this_this.ws.onmessage = function (event) {
-            this_this.showDataFunc(event.data);
+
+        self.ws.onmessage = function(event) {
+            console.log('[服务器响应]', event.data);
+            self.showDataFunc(event.data);
         };
-        this_this.ws.onclose = function () {
-            this_this.statusFunc(RECOVER_STATUS);
-            this_this.recover = setTimeout(function () {
-                this_this.connect();
+
+        self.ws.onclose = function() {
+            self.statusFunc(RECOVER_STATUS);
+            clearInterval(self.loopSend);
+            self.recover = setTimeout(function() {
+                self.connect();
+            }, REFLESH_TIME);
+        };
+
+        self.ws.onerror = function(error) {
+            console.log('[错误]', error);
+            // Optionally trigger a reconnection attempt
+            clearInterval(self.loopSend);
+            self.recover = setTimeout(function() {
+                self.connect();
             }, REFLESH_TIME);
         };
     };
+
     ChatWS.prototype.disconnect = function() {
-        var this_this = this;
-        this.statusFunc(CLOSE_STATUS);
-        clearInterval(this_this.loopSend);
-        clearTimeout(this_this.recover);
-        this_this.ws.onclose = null;
-        this_this.ws.onopen = null;
-        this_this.ws.close();
+        var self = this;
+        self.statusFunc(CLOSE_STATUS);
+        clearInterval(self.loopSend);
+        clearTimeout(self.recover);
+        self.ws.onclose = function(event) {
+            console.log('[连接已断开]', event);
+        };
+        self.ws.onopen = null;
+        self.ws.close();
     };
+
     return ChatWS;
 })();
-
-
-
-

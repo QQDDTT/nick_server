@@ -14,20 +14,26 @@ import reactor.core.publisher.Mono;
 @Component
 public class ChatHandler implements WebSocketHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(ChatHandler.class);
+
     @Autowired
-    private ChatServer cs;
-    @SuppressWarnings("null")
+    private ChatServer chatServer;
+
     @Override
     public Mono<Void> handle(final WebSocketSession session) {
-        LOGGER.info("[CHAT] " + session.receive());
+        LOGGER.info("[CONNECT] WebSocket");
+
         return session.send(
                 session.receive()
+                        .doOnNext(msg -> {
+                            String message = msg.getPayloadAsText();
+                            LOGGER.info("[RECEIVED]: {}", message);
+                        })
                         .map(msg -> {
-                            // String res = cs.answer(msg.getPayloadAsText());
-                            String res = "服务端返回: " + msg.getPayloadAsText();
-                            LOGGER.info("[RESULT]:" + res);
-                            return session.textMessage(cs.answer(msg.getPayloadAsText()));
-                         })
-                    );
+                            String message = msg.getPayloadAsText();
+                            String response = chatServer.answer(message);
+                            LOGGER.info("[RESPONSE] : {}", response);
+                            return session.textMessage(response);
+                        })
+        ).doOnTerminate(() -> LOGGER.info("[DISCONNECT] WebSocket"));
     }
 }
