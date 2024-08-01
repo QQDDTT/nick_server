@@ -3,13 +3,15 @@
   <head>
     <title>Nick Server index</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8;">
+    <script src="/static/js/common/Constant.js"></script>
+    <script src="/static/js/common/pageAction.js" ></script>
   </head>
   <body>
     <div>loading...</div>
   </body>
   <script lang="javascript">
     setTimeout(function(){
-      location.replace("http://" + location.host + "/home");
+      action(HOME_URL);
     },3000)
   </script>
 </html>

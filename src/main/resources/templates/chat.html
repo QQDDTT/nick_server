@@ -2,9 +2,9 @@
 <html lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <script type="text/javascript" src="/static/js/common/Constant.js"></script>
-    <script type="text/javascript" src="/static/js/pageAction.js" ></script>
-    <script type="text/javascript" src="/static/js/chatWebSocket.js"></script>
+    <script src="/static/js/common/Constant.js"></script>
+    <script src="/static/js/common/pageAction.js" ></script>
+    <script src="/static/js/chatWebSocket.js"></script>
     <title>echo Test</title>
   </head>
   <body>
@@ -13,37 +13,27 @@
     <label>STATUS:</label>
     <div id="status"></div>
     <br/>
-    <button onclick="open()">CONNECT</button>
-    <button onclick="close()">CLOSE</button>
+    <button onclick="chatWS.connect()">CONNECT</button>
+    <button onclick="chatWS.disconnect()">CLOSE</button>
     <br/>
     <label>SEND:</label>
     <input type="text" id="send" value="PING"/>
     <br/>
-    <label>RECOVER:</label>
-    <div id="recover"></div>
+    <label>RESULT:</label>
+    <div id="result"></div>
     
   </body>
   <script type="text/javascript">
-    function open(){
-        connect(
-            function(){
-                return document.getElementById("send").value;
-            },
-            function(msg){
-                document.getElementById("recover").innerText = msg;
-            },
-            function(status){
-                document.getElementById("status").innerText = status;
-            }
-        );
-    }
-    function close(){
-        dissconnect(
-            function(status){
-                document.getElementById("status").innerText = status;
-            }
-        );
-    }
-    open();
+    var chatWS = new ChatWS(
+      function(){
+        return document.getElementById("send").value;
+      },
+      function(msg){
+        document.getElementById("result").innerText = msg;
+      },
+      function (status){
+        document.getElementById("status").innerText = status;
+      }
+    );
   </script>
 </html>

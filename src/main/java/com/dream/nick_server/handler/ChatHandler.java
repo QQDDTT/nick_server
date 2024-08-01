@@ -19,13 +19,15 @@ public class ChatHandler implements WebSocketHandler {
     @SuppressWarnings("null")
     @Override
     public Mono<Void> handle(final WebSocketSession session) {
-        LOGGER.info("[CHAT SOCKET]:" + session.getId());
+        LOGGER.info("[CHAT] " + session.receive());
         return session.send(
                 session.receive()
-                        .map(msg -> session.textMessage(
-                                cs.answer(msg.getPayloadAsText())
-                                )
-                            )
+                        .map(msg -> {
+                            // String res = cs.answer(msg.getPayloadAsText());
+                            String res = "服务端返回: " + msg.getPayloadAsText();
+                            LOGGER.info("[RESULT]:" + res);
+                            return session.textMessage(cs.answer(msg.getPayloadAsText()));
+                         })
                     );
     }
 }
