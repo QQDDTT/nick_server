@@ -1,0 +1,136 @@
+package com.njservice.config;
+
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+
+import com.njservice.filter.AfterLogingLocationFilter;
+import com.njservice.service.AdminService;
+import com.njservice.service.CompanyService;
+import com.njservice.service.Impl.AdminUserDetailsServiceImpl;
+
+@SuppressWarnings("deprecation")
+@Configuration
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+	private final DataSource dataSource;
+
+	private final AdminUserDetailsServiceImpl adminUserServiceImpl;
+
+	private final SuccessHandler successHandler;
+	
+	@SuppressWarnings("unused")
+	private final AdminService adminService;
+
+	@SuppressWarnings("unused")
+	private final CompanyService companyService;
+
+	@Autowired
+	private AfterLogingLocationFilter afterLogingLocationFilter;
+
+	@Autowired
+	public SecurityConfig(AdminUserDetailsServiceImpl adminUserServiceImpl, DataSource dataSource,
+			SuccessHandler successHandler, AdminService adminService, CompanyService companyService) {
+		this.dataSource = dataSource;
+		this.adminUserServiceImpl = adminUserServiceImpl;
+		this.successHandler = successHandler;
+		this.adminService = adminService;
+		this.companyService = companyService;
+	}
+
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
+
+
+	@Bean
+	public PersistentTokenRepository persistentTokenRepository() {
+		JdbcTokenRepositoryImpl jdbcTokenRepositoryImpl = new JdbcTokenRepositoryImpl();
+		jdbcTokenRepositoryImpl.setDataSource(dataSource);
+		return jdbcTokenRepositoryImpl;
+	}
+
+	@Override
+	public void configure(WebSecurity web) throws Exception {
+		web.ignoring().antMatchers("/css/**");
+		web.ignoring().antMatchers("/js/**");
+		web.ignoring().antMatchers("/img/**");
+	}
+
+	@Override
+	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+		auth.userDetailsService(adminUserServiceImpl);
+	}
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		http.addFilterAfter(afterLogingLocationFilter, BasicAuthenticationFilter.class)
+				.authorizeRequests()
+				.mvcMatchers("/login").permitAll()
+				.mvcMatchers("/password/**").permitAll()
+				.mvcMatchers("/login/**").permitAll()
+				.mvcMatchers("/dealLogout").permitAll()
+				.mvcMatchers("/language/**").permitAll()
+				.mvcMatchers("/newPassword/**").permitAll()
+				.mvcMatchers("/signup").permitAll()
+				.mvcMatchers("/signup/**").permitAll()
+				.mvcMatchers("/information/admin").permitAll()
+				.mvcMatchers("/information/companyUserSignup").permitAll()
+				.mvcMatchers("/admin/adminUserSingup/**").permitAll()
+				.mvcMatchers("/admin/adminUserSingup").permitAll()
+				.mvcMatchers("/information/talent").permitAll()
+				.mvcMatchers("/signup/activation").permitAll()
+				.mvcMatchers("/company/**").hasAnyRole("COMPANY", "ADMIN", "TALENT")
+				.mvcMatchers("/order/**").hasAnyRole("COMPANY", "ADMIN", "TALENT")
+				.mvcMatchers("/admin/**").hasRole("ADMIN")
+				.mvcMatchers("/talent/**").hasAnyRole("TALENT", "COMPANY", "ADMIN")
+				.mvcMatchers("/channel/**").hasAnyRole("TALENT", "COMPANY", "ADMIN")
+				.mvcMatchers("/product/**").hasAnyRole("TALENT", "COMPANY", "ADMIN")
+				.mvcMatchers("/pay/**").hasAnyRole("TALENT", "COMPANY", "ADMIN")
+				.mvcMatchers("/cashflow/**").hasAnyRole("TALENT", "COMPANY", "ADMIN")
+				.anyRequest().authenticated()
+				.and()
+				//表单提交
+				.formLogin().
+				//自定义登录页面。可能是联用了thymeleaf，才采用/login的形式
+				loginPage("/login")
+				//此处是访问
+				.loginProcessingUrl("/login")
+				//登录的账号密码在service.Impl的AdminUserDetailServiceImpl实现类中定义
+				//将login.html的控件名为email提交的数据作为username使用
+				.usernameParameter("email")
+				.passwordParameter("password")
+				//使用自定义的登录器successHandler处理登录成功后的页面跳转
+				.successHandler(successHandler)
+				.permitAll()
+				//登录失败请求转发
+				.failureForwardUrl("/login?error")
+				.and()
+				.rememberMe()
+				.tokenRepository(persistentTokenRepository())
+				.tokenValiditySeconds(86400)
+				.and()
+				.logout()
+				.deleteCookies("JSESSIONID")//大家把这一行加上去
+				.permitAll()
+				.and()
+				.logout()
+				.logoutUrl("/logout")
+				.logoutSuccessUrl("/dealLogout")//退出相关程序
+				.and()
+				.csrf().disable();
+	}
+
+}
