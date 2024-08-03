@@ -12,7 +12,22 @@
             margin-bottom: 10px;
             width: 100%;
         }
+    
+        input[type="text"] {
+            width: 50%;
+            margin-right: 10px;
+            padding: 8px; /* Added padding for better touch target and readability */
+            border: 1px solid #ccc; /* Adding a border for better visual appearance */
+            border-radius: 4px; /* Rounded corners for a softer look */
+        }
+    
+        input[type="text"]:focus {
+            border-color: #66afe9; /* Border color change on focus for better visibility */
+            outline: none; /* Remove default outline */
+            box-shadow: 0 0 3px rgba(0, 0, 0, 0.1); /* Add shadow to enhance focus indication */
+        }
     </style>
+    
   </head>
   <body>
     <h2>FILES</h2>
@@ -32,13 +47,14 @@
         <span>Path:</span>
         <input id="path" value="."/>
         <button onclick="eachFiles()">EACH</button>
+        <button onclick="createFile()">CREATE</button>
+        <button onclick="deleteFile()">DELETE</button>
     </div>
     <br/>
     <label>Files</label>
     <select id="files_list"></select>
     <input id="file_name"/>
-    <button onclick="createFile()">CREATE</button>
-    <button onclick="deleteFile()">DELETE</button>
+
     <button onclick="openFile()">OPEN</button>
     <button onclick="saveFile()">SAVE</button>
     <div id="file_window">
@@ -159,7 +175,6 @@
             line: ""
         };
         filesWS.send(FILE_OPEN, value, function (data) {
-            console.log(data);
             var text = "";
             if (data && typeof data === 'object') {
                 Object.keys(data).forEach(function(line) {

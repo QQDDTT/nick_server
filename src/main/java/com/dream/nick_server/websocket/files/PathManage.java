@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,9 +21,8 @@ import com.dream.nick_server.websocket.WebSocketMessageBody;
 public class PathManage implements Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(PathManage.class);
 
-    // 常量定义，用于标识不同的文件操作
+    // 定义常量，用于标识不同的文件操作
     public static final String BASE_PATH = ".\\src\\main\\workSpace";
-    public static final PathManage pathManage = new PathManage();
     public static final String EACH = "path_each";
     public static final String SEARCH = "path_search";
     public static final String CREATE = "path_create";
@@ -29,11 +30,12 @@ public class PathManage implements Closeable {
     public static final String END = "path_end";
 
     private Map<String, String> model;
+    private final Lock lock = new ReentrantLock(); // 锁，用于确保线程安全
 
     // 单例模式实例
     private static PathManage instance;
 
-    // 私有构造函数
+    // 构造函数，初始化 model
     private PathManage() {
         this.model = new TreeMap<>();
     }
@@ -51,70 +53,96 @@ public class PathManage implements Closeable {
     }
 
     /**
-     * 遍历指定路径下的所有文件，并将其文件名和路径添加到模型中
+     * 遍历 BASE_PATH 路径下的所有文件，并将其文件名和路径添加到模型中
      * 
-     * @param path 文件夹路径
      * @return 操作结果的 JSON 字符串
      */
     public String each() {
-        model.clear();
+        lock.lock(); // 获取锁
         try {
-            Files.walk(Paths.get(BASE_PATH))
-                // .filter(p -> !Files.isDirectory(p))
-                .forEach(p -> model.put(p.toFile().getName(), p.toString()));
+            model.clear(); // 清空模型
+            // 遍历路径下的所有文件
+            try {
+                Files.walk(Paths.get(BASE_PATH))
+                    .filter(Files::isRegularFile) // 仅处理文件，不处理目录
+                    .forEach(p -> model.put(p.getFileName().toString(), p.toString())); // 将文件名和路径添加到模型
                 LOGGER.debug("PathManage each model: " + model);
-            return WebSocketMessageBody.success("", EACH, model);
-        } catch (IOException | RuntimeException e) {
-            LOGGER.error("[EACH ERROR]:", e);
-            return WebSocketMessageBody.error("", EACH, null);
+                return WebSocketMessageBody.success("", EACH, model); // 返回成功的 JSON 响应
+            } catch (IOException e) {
+                LOGGER.error("[EACH ERROR]:", e);
+                return WebSocketMessageBody.error("", EACH, null); // 返回错误的 JSON 响应
+            }
+        } finally {
+            lock.unlock(); // 释放锁
         }
     }
 
     /**
-     * 在指定的基础路径下根据条件搜索文件
+     * 根据条件在 BASE_PATH 下搜索文件
      * 
      * @param cond 文件名的匹配条件
      * @return 操作结果的 JSON 字符串
      */
     public String search(String cond) {
-        model.clear();
+        lock.lock(); // 获取锁
         try {
-            Files.walk(Paths.get(BASE_PATH))
-                // .filter(p -> !Files.isDirectory(p))
-                .filter(p -> p.toString().matches(cond))
-                .forEach(p -> model.put(p.toFile().getName(), p.toString()));
-            return WebSocketMessageBody.success("", SEARCH, model);
-        } catch (IOException e) {
-            LOGGER.error("[SEARCH ERROR]:", e);
-            return WebSocketMessageBody.error("", SEARCH, null);
+            model.clear(); // 清空模型
+            // 根据条件搜索文件
+            try {
+                Files.walk(Paths.get(BASE_PATH))
+                    .filter(p -> p.toString().matches(cond)) // 过滤匹配条件的文件
+                    .forEach(p -> model.put(p.getFileName().toString(), p.toString())); // 将文件名和路径添加到模型
+                return WebSocketMessageBody.success("", SEARCH, model); // 返回成功的 JSON 响应
+            } catch (IOException e) {
+                LOGGER.error("[SEARCH ERROR]:", e);
+                return WebSocketMessageBody.error("", SEARCH, null); // 返回错误的 JSON 响应
+            }
+        } finally {
+            lock.unlock(); // 释放锁
         }
     }
 
     /**
-     * 创建文件或目录
+     * 在 BASE_PATH 下创建文件或目录
      * 
      * @param path 要创建的文件或目录路径
      * @return 操作结果的 JSON 字符串
      */
     public String create(String path) {
-        if (Files.exists(Paths.get(path))) {
-            return WebSocketMessageBody.error("", CREATE, null);
-        } else if (path.matches("\\.\\w+$")) {
-            try {
-                Files.createFile(Path.of(path));
-                model.put(path.substring(path.lastIndexOf("\\") + 1), path);
-                return WebSocketMessageBody.success("", CREATE, model);
-            } catch (IOException e) {
-                return WebSocketMessageBody.error("", CREATE, null);
+        lock.lock(); // 获取锁以保证线程安全
+        try {
+            LOGGER.debug("PathManage create path: " + path);
+            Path filePath = Paths.get(path);
+            
+            // 检查文件或目录是否已存在
+            if (Files.exists(filePath)) {
+                return WebSocketMessageBody.error("", CREATE, null); // 文件或目录已存在，返回错误
             }
-        } else {
-            try {
-                Files.createDirectories(Path.of(path));
-                model.put(path.substring(path.lastIndexOf("\\") + 1), path);
-                return WebSocketMessageBody.success("", CREATE, model);
-            } catch (IOException e) {
-                return WebSocketMessageBody.error("", CREATE, model);
+            
+            // 根据路径的文件名判断是创建文件还是目录
+            if (filePath.getFileName().toString().contains(".")) {
+                // 如果路径包含点，则认为是文件，尝试创建文件
+                try {
+                    Files.createFile(filePath); // 创建文件
+                    model.put(filePath.getFileName().toString(), filePath.toString()); // 将文件名和路径添加到模型
+                    return WebSocketMessageBody.success("", CREATE, model); // 返回成功的 JSON 响应
+                } catch (IOException e) {
+                    LOGGER.error("[CREATE FILE ERROR]:", e);
+                    return WebSocketMessageBody.error("", CREATE, null); // 返回文件创建错误的 JSON 响应
+                }
+            } else {
+                // 如果路径不包含点，则认为是目录，尝试创建目录
+                try {
+                    Files.createDirectories(filePath); // 创建目录
+                    model.put(filePath.getFileName().toString(), filePath.toString()); // 将目录名和路径添加到模型
+                    return WebSocketMessageBody.success("", CREATE, model); // 返回成功的 JSON 响应
+                } catch (IOException e) {
+                    LOGGER.error("[CREATE DIRECTORY ERROR]:", e);
+                    return WebSocketMessageBody.error("", CREATE, null); // 返回目录创建错误的 JSON 响应
+                }
             }
+        } finally {
+            lock.unlock(); // 释放锁
         }
     }
 
@@ -125,13 +153,24 @@ public class PathManage implements Closeable {
      * @return 操作结果的 JSON 字符串
      */
     public String delete(String path) {
-        if (Files.exists(Paths.get(path)) && !Files.exists(Paths.get(path + ".bk"))) {
-            File file = new File(path);
-            file.renameTo(new File(path + ".bk"));
-            model.remove(file.getName());
-            return WebSocketMessageBody.success("", DELETE, model);
-        } else {
-            return WebSocketMessageBody.error("", DELETE, model);
+        lock.lock(); // 获取锁
+        try {
+            Path filePath = Paths.get(path);
+            Path backupPath = filePath.resolveSibling(filePath.getFileName() + ".bk");
+            try {
+                if (Files.exists(filePath) && !Files.exists(backupPath)) {
+                    Files.move(filePath, backupPath); // 将文件重命名为 .bk
+                    model.remove(filePath.getFileName().toString()); // 从模型中移除文件
+                    return WebSocketMessageBody.success("", DELETE, model); // 返回成功的 JSON 响应
+                } else {
+                    return WebSocketMessageBody.error("", DELETE, null); // 文件不存在或备份文件已存在，返回错误
+                }
+            } catch (IOException e) {
+                LOGGER.error("[DELETE ERROR]:", e);
+                return WebSocketMessageBody.error("", DELETE, null); // 返回错误的 JSON 响应
+            }
+        } finally {
+            lock.unlock(); // 释放锁
         }
     }
 
@@ -141,18 +180,23 @@ public class PathManage implements Closeable {
      * @return 操作结果的 JSON 字符串
      */
     public String end() {
-        LOGGER.info("PathManage end");
+        lock.lock(); // 获取锁
         try {
-            this.close();
-            return WebSocketMessageBody.success("", END, null);
-        } catch (IOException e) {
-            LOGGER.error("PathManage close error:", e);
-            return WebSocketMessageBody.error("", END, null);
+            LOGGER.info("PathManage end");
+            try {
+                this.close(); // 清理资源
+                return WebSocketMessageBody.success("", END, null); // 返回成功的 JSON 响应
+            } catch (IOException e) {
+                LOGGER.error("[END ERROR]:", e);
+                return WebSocketMessageBody.error("", END, null); // 返回错误的 JSON 响应
+            }
+        } finally {
+            lock.unlock(); // 释放锁
         }
     }
 
     @Override
     public void close() throws IOException {
-        this.model.clear();
+        this.model.clear(); // 清空模型
     }
 }

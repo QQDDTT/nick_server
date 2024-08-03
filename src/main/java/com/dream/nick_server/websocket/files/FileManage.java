@@ -3,9 +3,12 @@ package com.dream.nick_server.websocket.files;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.Closeable;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
@@ -60,51 +63,73 @@ public class FileManage implements Closeable{
     public String open(String path) {
         lock.lock();
         try {
-            LOGGER.info("[OPEN] " + this.path);
+            // 检查路径是否合法
+            if (path == null || path.isEmpty()) {
+                return WebSocketMessageBody.error("Invalid path provided", OPEN, null);
+            }
+
+            // 记录文件打开操作
+            LOGGER.info("[OPEN] Attempting to open file at path: " + path);
+
+            // 设置文件路径
             this.path = path;
             this.model.clear();
             String result;
-            try (BufferedReader br = new BufferedReader(new FileReader(this.path))) {
+
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(this.path), StandardCharsets.UTF_8))) {
                 String line;
                 int lineNumber = 1;
                 while ((line = br.readLine()) != null) {
                     this.model.put(String.valueOf(lineNumber++), line);
                 }
+                LOGGER.debug("[OPEN] File content: " + this.model);
                 result = WebSocketMessageBody.success("", OPEN, model);
             } catch (IOException e) {
-                LOGGER.error("[OPEN ERROR] ", e);
-                result = WebSocketMessageBody.error("", OPEN, null);
+                LOGGER.error("[OPEN ERROR] Failed to read file at path: " + path, e);
+                result = WebSocketMessageBody.error("Failed to read file", OPEN, null);
             }
+
             return result;
         } finally {
             lock.unlock();
         }
     }
 
+
+
+
     /**
      * 将内存中的内容保存到文件中
+     * 
      * @return 操作结果的 JSON 字符串
      */
     public String save() {
-        lock.lock();
+        lock.lock(); // 获取锁以保证线程安全
         try {
-            LOGGER.info("[SAVE] " + this.path);
+            LOGGER.info("[SAVE] Saving contents to file: " + this.path);
             String result;
-            try (BufferedWriter bw = new BufferedWriter(new FileWriter(this.path))) {
+            
+            // 尝试将内存中的内容写入到文件
+            try (BufferedWriter bw = new BufferedWriter(
+                    new OutputStreamWriter(new FileOutputStream(this.path), StandardCharsets.UTF_8))) {
+                // 遍历内存中的所有行，将每一行写入到文件中
                 for (String line : this.model.values()) {
-                    bw.write(line);
-                    bw.newLine();
+                    bw.write(line); // 写入一行
+                    bw.newLine(); // 写入换行符
                 }
-                result = WebSocketMessageBody.success("", SAVE, null);
+                result = WebSocketMessageBody.success("", SAVE, null); // 成功保存内容，返回成功的 JSON 响应
             } catch (IOException e) {
-                LOGGER.error("[SAVE ERROR] ", e);
-                result = WebSocketMessageBody.error("", SAVE, null);
+                // 捕获并处理文件写入错误
+                LOGGER.error("[SAVE ERROR] Failed to save content to file:", e);
+                result = WebSocketMessageBody.error("", SAVE, null); // 返回保存错误的 JSON 响应
             }
+            
             return result;
         } finally {
-            lock.unlock();
+            lock.unlock(); // 释放锁
         }
     }
+
 
     /**
      * 结束文件操作，并关闭文件
