@@ -27,6 +27,7 @@ var FilesWS = (function() {
     const RECOVER_STATUS = "链接断开, 重连..."; // 连接断开并尝试重连的状态信息
     const SEND_STATUS = "发送消息成功"; // 发送消息成功的状态信息
     const RECEIVE_STATUS = "接收消息成功"; // 接收消息成功的状态信息
+    const ERROR_STATUS = "发送消息失败"; // 发送消息失败的状态信息
     const CLOSE_STATUS = "链接已断开"; // 连接关闭的状态信息
     const REFLESH_TIME = 1000; // 定时器刷新时间（毫秒）
 
@@ -130,7 +131,8 @@ var FilesWS = (function() {
         self.ws.onmessage = function(event) {
             var data = JSON.parse(event.data); // 解析接收到的消息
             if (data.type === "error") {
-                console.error('[错误]', data.message); // 打印错误信息
+                console.error('[错误]', data.message, 'REASON', data.value.reason); // 打印错误信息
+                self.statusFunc(ERROR_STATUS);
             } else {
                 self.statusFunc(RECEIVE_STATUS); // 打印接收消息成功的状态信息
                 showRecevieFunc(data.value); // 调用显示接收消息的函数

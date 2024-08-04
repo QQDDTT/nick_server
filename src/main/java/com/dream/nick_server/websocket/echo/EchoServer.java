@@ -33,6 +33,6 @@ public class EchoServer {
         LOGGER.debug("[MESSAGE]: " + message);
 
         // 返回成功的响应消息
-        return WebSocketMessageBody.success("", message, null);
+        return WebSocketMessageBody.success(message, null);
     }
 }

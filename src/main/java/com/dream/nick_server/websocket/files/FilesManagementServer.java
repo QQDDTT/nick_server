@@ -1,5 +1,7 @@
 package com.dream.nick_server.websocket.files;
 
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -66,7 +68,7 @@ public class FilesManagementServer {
                 case FileManage.WRITE_LINE:
                     return fileManage.writeLine(line, value);
                 default:
-                    return WebSocketMessageBody.error("key", message, null);
+                    return WebSocketMessageBody.error(message, "Unkonwn message type");
             }
         } catch (Exception e) {
             LOGGER.error("[ERROR]", e);

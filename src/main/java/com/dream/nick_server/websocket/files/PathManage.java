@@ -1,7 +1,6 @@
 package com.dream.nick_server.websocket.files;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -67,10 +66,10 @@ public class PathManage implements Closeable {
                     .filter(Files::isRegularFile) // 仅处理文件，不处理目录
                     .forEach(p -> model.put(p.getFileName().toString(), p.toString())); // 将文件名和路径添加到模型
                 LOGGER.debug("PathManage each model: " + model);
-                return WebSocketMessageBody.success("", EACH, model); // 返回成功的 JSON 响应
+                return WebSocketMessageBody.success(EACH, model); // 返回成功的 JSON 响应
             } catch (IOException e) {
                 LOGGER.error("[EACH ERROR]:", e);
-                return WebSocketMessageBody.error("", EACH, null); // 返回错误的 JSON 响应
+                return WebSocketMessageBody.error(EACH, "Each error"); // 返回错误的 JSON 响应
             }
         } finally {
             lock.unlock(); // 释放锁
@@ -92,10 +91,10 @@ public class PathManage implements Closeable {
                 Files.walk(Paths.get(BASE_PATH))
                     .filter(p -> p.toString().matches(cond)) // 过滤匹配条件的文件
                     .forEach(p -> model.put(p.getFileName().toString(), p.toString())); // 将文件名和路径添加到模型
-                return WebSocketMessageBody.success("", SEARCH, model); // 返回成功的 JSON 响应
+                return WebSocketMessageBody.success(SEARCH, model); // 返回成功的 JSON 响应
             } catch (IOException e) {
                 LOGGER.error("[SEARCH ERROR]:", e);
-                return WebSocketMessageBody.error("", SEARCH, null); // 返回错误的 JSON 响应
+                return WebSocketMessageBody.error(SEARCH, "Search error"); // 返回错误的 JSON 响应
             }
         } finally {
             lock.unlock(); // 释放锁
@@ -116,7 +115,7 @@ public class PathManage implements Closeable {
             
             // 检查文件或目录是否已存在
             if (Files.exists(filePath)) {
-                return WebSocketMessageBody.error("", CREATE, null); // 文件或目录已存在，返回错误
+                return WebSocketMessageBody.error(CREATE, "Create error: file or directory already exist"); // 文件或目录已存在，返回错误
             }
             
             // 根据路径的文件名判断是创建文件还是目录
@@ -125,20 +124,20 @@ public class PathManage implements Closeable {
                 try {
                     Files.createFile(filePath); // 创建文件
                     model.put(filePath.getFileName().toString(), filePath.toString()); // 将文件名和路径添加到模型
-                    return WebSocketMessageBody.success("", CREATE, model); // 返回成功的 JSON 响应
+                    return WebSocketMessageBody.success(CREATE, model); // 返回成功的 JSON 响应
                 } catch (IOException e) {
                     LOGGER.error("[CREATE FILE ERROR]:", e);
-                    return WebSocketMessageBody.error("", CREATE, null); // 返回文件创建错误的 JSON 响应
+                    return WebSocketMessageBody.error(CREATE, "Create file error"); // 返回文件创建错误的 JSON 响应
                 }
             } else {
                 // 如果路径不包含点，则认为是目录，尝试创建目录
                 try {
                     Files.createDirectories(filePath); // 创建目录
                     model.put(filePath.getFileName().toString(), filePath.toString()); // 将目录名和路径添加到模型
-                    return WebSocketMessageBody.success("", CREATE, model); // 返回成功的 JSON 响应
+                    return WebSocketMessageBody.success(CREATE, model); // 返回成功的 JSON 响应
                 } catch (IOException e) {
                     LOGGER.error("[CREATE DIRECTORY ERROR]:", e);
-                    return WebSocketMessageBody.error("", CREATE, null); // 返回目录创建错误的 JSON 响应
+                    return WebSocketMessageBody.error(CREATE, "Create directory error"); // 返回目录创建错误的 JSON 响应
                 }
             }
         } finally {
@@ -161,13 +160,13 @@ public class PathManage implements Closeable {
                 if (Files.exists(filePath) && !Files.exists(backupPath)) {
                     Files.move(filePath, backupPath); // 将文件重命名为 .bk
                     model.remove(filePath.getFileName().toString()); // 从模型中移除文件
-                    return WebSocketMessageBody.success("", DELETE, model); // 返回成功的 JSON 响应
+                    return WebSocketMessageBody.success(DELETE, model); // 返回成功的 JSON 响应
                 } else {
-                    return WebSocketMessageBody.error("", DELETE, null); // 文件不存在或备份文件已存在，返回错误
+                    return WebSocketMessageBody.error(DELETE, "Delete error: file not exist or backup file already exist"); // 文件不存在或备份文件已存在，返回错误
                 }
             } catch (IOException e) {
                 LOGGER.error("[DELETE ERROR]:", e);
-                return WebSocketMessageBody.error("", DELETE, null); // 返回错误的 JSON 响应
+                return WebSocketMessageBody.error(DELETE, "Delete error"); // 返回错误的 JSON 响应
             }
         } finally {
             lock.unlock(); // 释放锁
@@ -185,10 +184,10 @@ public class PathManage implements Closeable {
             LOGGER.info("PathManage end");
             try {
                 this.close(); // 清理资源
-                return WebSocketMessageBody.success("", END, null); // 返回成功的 JSON 响应
+                return WebSocketMessageBody.success(END, null); // 返回成功的 JSON 响应
             } catch (IOException e) {
                 LOGGER.error("[END ERROR]:", e);
-                return WebSocketMessageBody.error("", END, null); // 返回错误的 JSON 响应
+                return WebSocketMessageBody.error(END, "Close error"); // 返回错误的 JSON 响应
             }
         } finally {
             lock.unlock(); // 释放锁

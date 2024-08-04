@@ -65,7 +65,7 @@ public class FileManage implements Closeable{
         try {
             // 检查路径是否合法
             if (path == null || path.isEmpty()) {
-                return WebSocketMessageBody.error("Invalid path provided", OPEN, null);
+                return WebSocketMessageBody.error(OPEN, "Invalid path provided");
             }
 
             // 记录文件打开操作
@@ -83,10 +83,10 @@ public class FileManage implements Closeable{
                     this.model.put(String.valueOf(lineNumber++), line);
                 }
                 LOGGER.debug("[OPEN] File content: " + this.model);
-                result = WebSocketMessageBody.success("", OPEN, model);
+                result = WebSocketMessageBody.success(OPEN, model);
             } catch (IOException e) {
                 LOGGER.error("[OPEN ERROR] Failed to read file at path: " + path, e);
-                result = WebSocketMessageBody.error("Failed to read file", OPEN, null);
+                result = WebSocketMessageBody.error(OPEN, "Failed to read file");
             }
 
             return result;
@@ -117,11 +117,11 @@ public class FileManage implements Closeable{
                     bw.write(line); // 写入一行
                     bw.newLine(); // 写入换行符
                 }
-                result = WebSocketMessageBody.success("", SAVE, null); // 成功保存内容，返回成功的 JSON 响应
+                result = WebSocketMessageBody.success(SAVE, null); // 成功保存内容，返回成功的 JSON 响应
             } catch (IOException e) {
                 // 捕获并处理文件写入错误
                 LOGGER.error("[SAVE ERROR] Failed to save content to file:", e);
-                result = WebSocketMessageBody.error("", SAVE, null); // 返回保存错误的 JSON 响应
+                result = WebSocketMessageBody.error(SAVE, null); // 返回保存错误的 JSON 响应
             }
             
             return result;
@@ -139,9 +139,9 @@ public class FileManage implements Closeable{
         try {
             this.close();
         } catch (IOException e) {
-            return WebSocketMessageBody.error("", END, null);
+            return WebSocketMessageBody.error(END, "Close failed");
         }
-        return WebSocketMessageBody.success("", END, null);
+        return WebSocketMessageBody.success(END, null);
     }
 
     @Override
@@ -167,9 +167,9 @@ public class FileManage implements Closeable{
             LOGGER.info("[READ_LINE] " + line);
             String text = this.model.get(line);
             if (text == null) {
-                return WebSocketMessageBody.error("", READE_LINE, null);
+                return WebSocketMessageBody.error(READE_LINE, "Line not found");
             }
-            return WebSocketMessageBody.success("", READE_LINE, Map.of(line, text));
+            return WebSocketMessageBody.success( READE_LINE, Map.of(line, text));
         } finally {
             lock.unlock();
         }
@@ -186,7 +186,7 @@ public class FileManage implements Closeable{
         try {
             LOGGER.info("[WRITE_LINE] " + line);
             this.model.put(line, text);
-            return WebSocketMessageBody.success("", WRITE_LINE, null);
+            return WebSocketMessageBody.success(WRITE_LINE, null);
         } finally {
             lock.unlock();
         }

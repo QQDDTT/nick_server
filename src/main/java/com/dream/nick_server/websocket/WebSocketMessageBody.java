@@ -1,7 +1,6 @@
 package com.dream.nick_server.websocket;
 
 import java.util.Map;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +15,8 @@ public class WebSocketMessageBody {
     private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketMessageBody.class);
     private static final String SUCCESS = "success"; // 成功类型消息的标识
     private static final String ERROR = "error"; // 错误类型消息的标识
+
+    private static final String UTF_8 = "utf-8"; // 字符编码
     
     private String type; // 消息类型
     private String key; // 消息的关键字
@@ -80,8 +81,8 @@ public class WebSocketMessageBody {
      * @param value 消息附带的值
      * @return JSON 字符串格式的消息
      */
-    public static String success(String key, String message, Map<String, String> value) {
-        return createMessage(SUCCESS, key, message, value);
+    public static String success(String message, Map<String, String> value) {
+        return createMessage(SUCCESS, UTF_8, message, value);
     }
 
     /**
@@ -92,8 +93,8 @@ public class WebSocketMessageBody {
      * @param value 消息附带的值
      * @return JSON 字符串格式的消息
      */
-    public static String error(String key, String message, Map<String, String> value) {
-        return createMessage(ERROR, key, message, value);
+    public static String error(String message, String reason) {
+        return createMessage(ERROR, UTF_8, message, Map.of("reason", reason));
     }
 
     /**
