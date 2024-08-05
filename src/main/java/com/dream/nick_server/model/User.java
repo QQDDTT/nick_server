@@ -3,6 +3,9 @@ package com.dream.nick_server.model;
 import java.util.Collection;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class User implements UserDetails{
 
     private static final long serialVersionUID = 1L;
@@ -25,7 +28,7 @@ public class User implements UserDetails{
 
     @Override
     public Collection<Authority> getAuthorities() {
-        return null;
+        return this.authorities;
     }
 
     public void setAuthorities(Collection<Authority> authorities) {

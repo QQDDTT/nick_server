@@ -9,6 +9,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.function.server.RequestPredicate;
 import org.springframework.web.reactive.function.server.RequestPredicates;
@@ -20,6 +22,7 @@ import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter;
 
 import com.dream.nick_server.handler.SuccessHandler;
+import com.dream.nick_server.model.Authority;
 import com.dream.nick_server.service.IUserService;
 import com.dream.nick_server.websocket.echo.EchoHandler;
 import com.dream.nick_server.websocket.echo.EchoServer;
@@ -50,8 +53,10 @@ public class SecurityConfig {
                     .pathMatchers("/index").permitAll() // 允许访问index页面
                     .pathMatchers("/user/register").permitAll() // 允许访问register页面
                     .pathMatchers("/user/login").permitAll() // 允许访问login页面
+                    .pathMatchers("/user/authenticate").permitAll()
                     .pathMatchers("/static/**").permitAll() // 允许访问静态资源
                     .pathMatchers("/ws/echo").permitAll() // 允许访问 Echo WebSocket
+                    .pathMatchers("/home").hasAnyAuthority(Authority.ADMIN.getAuthority(), Authority.USER.getAuthority()) // 允许访问 home 页面（需要管理员或用户权限）
                     .anyExchange().authenticated() // 其他路径需要认证
                     .and()
                 .formLogin()
@@ -79,7 +84,6 @@ public RouterFunction<ServerResponse> routes(IUserService userService, SuccessHa
                 .and(RequestPredicates.accept(MediaType.TEXT_HTML)),
                 handler::get)
         .andRoute(isHttp()
-                .and(request -> !request.uri().toString().startsWith("/user"))
                 .and(RequestPredicates.method(HttpMethod.POST))
                 .and(RequestPredicates.accept(MediaType.TEXT_HTML)),
                 handler::post)
@@ -116,6 +120,11 @@ public RouterFunction<ServerResponse> routes(IUserService userService, SuccessHa
     public WebSocketHandlerAdapter handlerAdapter() {
         return new WebSocketHandlerAdapter();
     }
+
+    @Bean
+	public PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
 
     /**
      * 检查请求是否为 HTTP 请求

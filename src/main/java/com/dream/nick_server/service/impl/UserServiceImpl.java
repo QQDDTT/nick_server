@@ -5,6 +5,7 @@ import com.dream.nick_server.model.Authority;
 import com.dream.nick_server.service.IUserService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class UserServiceImpl implements IUserService {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserServiceImpl.class);
 
-    private static final String FILE_PATH = "src/main/resources/templates/user/users.json";// 存储用户数据的类路径文件
+    private static final String FILE_PATH = "src/main/resources/users/users.json";// 存储用户数据的类路径文件
     private final ObjectMapper objectMapper = new ObjectMapper(); // Jackson 对象映射器用于 JSON 处理
     private final Map<String, User> userMap = new ConcurrentHashMap<>(); // 线程安全的用户映射表
 
@@ -42,6 +43,8 @@ public class UserServiceImpl implements IUserService {
             if (Files.exists(path)) {
                 // 从文件中读取用户数据并解析成 Map
                 Map<String, User> loadedUsers = objectMapper.readValue(path.toFile(), new TypeReference<Map<String, User>>() {});
+                
+                LOGGER.debug("Loaded users from file: {}", loadedUsers);
                 // 将读取到的用户数据放入用户映射表
                 userMap.putAll(loadedUsers);
             } else {
@@ -77,7 +80,7 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     public User registerUser(String username, String password, String email) {
-        LOGGER.info("Registering user with username: " , username);
+        LOGGER.info("Registering user with username: {} , password: {} , email: {}" , username, password, email);
         for(Entry<String, User> entry : userMap.entrySet()) {
             if(entry.getValue().getUsername().equals(username)) { // 如果用户名已存在
                 LOGGER.info("Username already exists: " + username);
@@ -94,9 +97,10 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     public User authenticate(String username, String password) {
-        LOGGER.info("Authenticating user with username: {}", username);
+        LOGGER.info("Authenticating user with username: {} , password: {}", username, password);
         for(Entry<String, User> entry : userMap.entrySet()) {
-            if(entry.getKey().equals(username) && entry.getValue().equals(password)) {
+            LOGGER.debug("User: " + entry.getValue());
+            if(entry.getValue().getUsername().equals(username) && entry.getValue().getPassword().equals(password))   {
                 LOGGER.info("User authenticated: " + username);
                 return entry.getValue(); // 如果用户名和密码匹配，返回 user
             }
@@ -107,12 +111,14 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     public User updateUser(String id, User user) {
-        LOGGER.info("Updating user with id: " + id);
+        LOGGER.info("Updating user with id: {}", id);
         User oldUser = userMap.get(id);
         if(oldUser != null) { // 如果用户存在
+            LOGGER.debug("User before update: user ={}");// 打印用户信息
             userMap.put(id, user); // 更新用户数据
             saveUsersToFile(); // 将更新后的数据保存到文件
             LOGGER.info("User updated: " + id);
+            LOGGER.debug("User after update: user ={}");// 打印用户信息
             return user; // 返回更新后的用户对象
         }
         LOGGER.info("User update failed: " + id);
@@ -122,6 +128,7 @@ public class UserServiceImpl implements IUserService {
     @Override
     public boolean deleteUser(String id, User user) {
         LOGGER.info("Deleting user with id: " + id);
+        // 
         User oldUser = userMap.get(id);
         if(oldUser != null && oldUser.equals(user)) { // 如果用户存在且密码正确
             userMap.remove(id); // 删除用户数据
