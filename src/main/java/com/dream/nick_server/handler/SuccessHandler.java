@@ -27,20 +27,13 @@ import java.net.URI;
  * 提供静态文件、HTML 页面服务，并处理认证成功后的重定向。
  */
 @Component
-public class SuccessHandler implements ServerAuthenticationSuccessHandler {
+public class SuccessHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SuccessHandler.class);
 
     @Autowired
     private UserServiceImpl userService;
 
-    @Override
-    public Mono<Void> onAuthenticationSuccess(WebFilterExchange webFilterExchange, Authentication authentication) {
-        LOGGER.info("[Authentication Success] Authentication: {}", authentication);
-        User user = (User) authentication.getPrincipal();
-        LOGGER.info("[Authentication Success] User: {}", user);
-        return handleAuthenticationSuccess(webFilterExchange, user);
-    }
 
     public Mono<ServerResponse> post(ServerRequest request) {
         LOGGER.info("[POST] Request path: {}", request.path());
@@ -153,7 +146,7 @@ public class SuccessHandler implements ServerAuthenticationSuccessHandler {
     }
 
     private Mono<ServerResponse> getHTML(String path) {
-        Resource resource = new ClassPathResource("/templates" + path + ".html");
+        Resource resource = new ClassPathResource("/templates/" + path + ".html");
         LOGGER.info("[GET] HTML request for path: {}", path);
         return ServerResponse
                 .ok()
@@ -188,15 +181,5 @@ public class SuccessHandler implements ServerAuthenticationSuccessHandler {
         } else {
             return MediaType.APPLICATION_OCTET_STREAM;
         }
-    }
-
-    private Mono<Void> handleAuthenticationSuccess(WebFilterExchange webFilterExchange, User user) {
-        return webFilterExchange.getExchange().getSession()
-                .flatMap(session -> {
-                    storeUserInSession(session, user);
-                    webFilterExchange.getExchange().getResponse().setStatusCode(HttpStatus.FOUND);
-                    webFilterExchange.getExchange().getResponse().getHeaders().setLocation(URI.create("/home"));
-                    return webFilterExchange.getExchange().getResponse().setComplete();
-                });
     }
 }
