@@ -6,9 +6,12 @@ import com.dream.nick_server.service.IUserService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import reactor.core.publisher.Mono;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.IOException;
@@ -21,6 +24,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+/** 
+ * 
+ */
 @Service
 public class UserServiceImpl implements IUserService {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserServiceImpl.class);
@@ -28,6 +34,7 @@ public class UserServiceImpl implements IUserService {
     private static final String FILE_PATH = "src/main/resources/users/users.json"; // 存储用户数据的文件路径
     private final ObjectMapper objectMapper = new ObjectMapper(); // Jackson 对象映射器，用于 JSON 处理
     private final Map<String, User> userMap = new ConcurrentHashMap<>(); // 线程安全的用户映射表
+     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(); // 密码编码器
 
     public UserServiceImpl() {
         loadUsersFromFile(); // 服务初始化时从文件加载用户数据
@@ -78,37 +85,38 @@ public class UserServiceImpl implements IUserService {
     }
 
     @Override
-    public User loadUserByUsername(String username) {
+    public Mono<User> loadUserByUsername(String username) {
         LOGGER.info("Loading user with username: " + username);
         for (Entry<String, User> entry : userMap.entrySet()) {
             if (entry.getValue().getUsername().equals(username)) { // 如果用户名匹配
                 LOGGER.info("User loaded: " + username);
-                return entry.getValue(); // 返回用户对象
+                return Mono.just(entry.getValue()); // 返回用户对象
             }
         }
         LOGGER.info("User not found: " + username);
-        return null; // 如果用户名不存在，返回 null
+        return Mono.just(new User()); // 如果用户名不存在，返回空用户对象
     }
 
     @Override
-    public User registerUser(String username, String password, String email) {
-        LOGGER.info("Registering user with username: {} , password: {} , email: {}" , username, password, email);
+    public Mono<User> registerUser(String username, String password, String email) {
+        LOGGER.info("Registering user with username: {}, password: {}, email: {}", username, password, email);
         for (Entry<String, User> entry : userMap.entrySet()) {
             if (entry.getValue().getUsername().equals(username)) { // 如果用户名已存在
                 LOGGER.info("Username already exists: " + username);
-                return null; // 注册失败
+                return Mono.empty(); // 注册失败
             }
         }
         // 生成随机 ID
         String id = UUID.randomUUID().toString(); // 生成随机 ID
-        User user = new User(id, username, password, email, List.of(Authority.ADMIN)); // 创建用户对象
+        String encodedPassword = passwordEncoder.encode(password); // 加密密码
+        User user = new User(id, username, encodedPassword, email, List.of(Authority.ADMIN)); // 创建用户对象
         userMap.put(id, user);
         saveUsersToFile(); // 将用户数据保存到文件
-        return user;
+        return Mono.just(user); // 返回注册成功的用户对象
     }
 
     @Override
-    public User updateUser(String id, User user) {
+    public Mono<User> updateUser(String id, User user) {
         LOGGER.info("Updating user with id: {}", id);
         User oldUser = userMap.get(id);
         if (oldUser != null) { // 如果用户存在
@@ -117,23 +125,23 @@ public class UserServiceImpl implements IUserService {
             saveUsersToFile(); // 将更新后的数据保存到文件
             LOGGER.info("User updated: " + id);
             LOGGER.debug("User after update: user ={}", user); // 打印用户信息
-            return user; // 返回更新后的用户对象
+            return Mono.just(user); // 返回更新后的用户对象
         }
         LOGGER.info("User update failed: " + id);
-        return null; // 如果用户不存在，返回 null
+        return Mono.empty(); // 如果用户不存在，返回 null
     }
 
     @Override
-    public boolean deleteUser(String id, User user) {
+    public Mono<Boolean> deleteUser(String id, User user) {
         LOGGER.info("Deleting user with id: " + id);
         User oldUser = userMap.get(id);
         if (oldUser != null && oldUser.equals(user)) { // 如果用户存在且密码正确
             userMap.remove(id); // 删除用户数据
             saveUsersToFile(); // 将删除后的数据保存到文件
             LOGGER.info("User deleted: " + id);
-            return true; // 返回 true 表示删除成功
+            return Mono.just(true); // 返回 true 表示删除成功
         }
         LOGGER.info("User deletion failed: " + id);
-        return false; // 如果用户名或密码错误，返回 false
+        return Mono.just(false); // 如果用户名或密码错误，返回 false
     }
 }

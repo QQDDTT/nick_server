@@ -7,14 +7,9 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.web.server.WebFilterExchange;
-import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
-import org.springframework.web.server.WebSession;
-
 import com.dream.nick_server.model.User;
 import com.dream.nick_server.service.impl.UserServiceImpl;
 
@@ -34,10 +29,14 @@ public class SuccessHandler {
     @Autowired
     private UserServiceImpl userService;
 
-
+    /**
+     * 处理 POST 请求
+     */
     public Mono<ServerResponse> post(ServerRequest request) {
         LOGGER.info("[POST] Request path: {}", request.path());
-        if (request.path().equals("/user/register")) {
+        if (request.path().equals("/user/login")) {
+            return getHTML("/home"); // 处理登录请求
+        } else if (request.path().equals("/user/register")) {
             return userRegister(request); // 处理用户注册请求
         } else if (request.path().equals("/user/update")) {
             return userUpdate(request); // 处理用户更新请求
@@ -48,26 +47,28 @@ public class SuccessHandler {
         }
     }
 
+    /**
+     * 处理用户注册请求
+     */
     public Mono<ServerResponse> userRegister(ServerRequest request) {
         return request.formData().flatMap(formData -> {
             String username = formData.getFirst("username");
             String password = formData.getFirst("password");
             String email = formData.getFirst("email");
             LOGGER.info("[POST] userRegister, username: {}, password: {}, email: {}", username, password, email);
-            User user = userService.registerUser(username, password, email);
-            if (user != null) {
-                return request.session().flatMap(session -> {
-                    storeUserInSession(session, user);
-                    return ServerResponse.status(HttpStatus.FOUND)
-                            .location(URI.create("/home"))
-                            .build();
-                });
-            } else {
-                return getHTML("user/register");
-            }
+            return userService.registerUser(username, password, email)
+                    .flatMap(user -> request.session().flatMap(session -> {
+                        return ServerResponse.status(HttpStatus.FOUND)
+                                .location(URI.create("/home"))
+                                .build();
+                    }))
+                    .switchIfEmpty(getHTML("user/register"));
         });
     }
 
+    /**
+     * 处理用户更新请求
+     */
     public Mono<ServerResponse> userUpdate(ServerRequest request) {
         return request.formData().flatMap(formData -> {
             String id = formData.getFirst("id");
@@ -77,20 +78,19 @@ public class SuccessHandler {
             LOGGER.info("[PUT] userUpdate, username: {}, password: {}, email: {}", username, password, email);
             User user = new User(id, username, password, email, null);
             LOGGER.info("[PUT] userUpdate, user: {}", user);
-            User newUser = userService.updateUser(id, user);
-            if (newUser != null) {
-                return request.session().flatMap(session -> {
-                    storeUserInSession(session, newUser);
-                    return ServerResponse.status(HttpStatus.FOUND)
-                            .location(URI.create("/home"))
-                            .build();
-                });
-            } else {
-                return getHTML("user/update");
-            }
+            return userService.updateUser(id, user)
+                    .flatMap(newUser -> request.session().flatMap(session -> {
+                        return ServerResponse.status(HttpStatus.FOUND)
+                                .location(URI.create("/home"))
+                                .build();
+                    }))
+                    .switchIfEmpty(getHTML("user/update"));
         });
     }
 
+    /**
+     * 处理用户删除请求
+     */
     public Mono<ServerResponse> userDelete(ServerRequest request) {
         return request.formData().flatMap(formData -> {
             String id = formData.getFirst("id");
@@ -99,17 +99,23 @@ public class SuccessHandler {
             String email = formData.getFirst("email");
             LOGGER.info("[DELETE] userDelete, id: {}, username: {}, password: {}", id, username, password);
             User user = new User(id, username, password, email, null);
-            if (userService.deleteUser(id, user)) {
-                return ServerResponse.status(HttpStatus.FOUND)
-                        .location(URI.create("/home"))
-                        .build();
-            } else {
-                LOGGER.error("Error deleting user");
-                return getHTML("user/delete");
-            }
+            return userService.deleteUser(id, user)
+                    .flatMap(deleted -> {
+                        if (deleted) {
+                            return ServerResponse.status(HttpStatus.FOUND)
+                                    .location(URI.create("/home"))
+                                    .build();
+                        } else {
+                            LOGGER.error("Error deleting user");
+                            return getHTML("user/delete");
+                        }
+                    });
         });
     }
 
+    /**
+     * 处理 GET 请求
+     */
     public Mono<ServerResponse> get(ServerRequest request) {
         LOGGER.info("[GET] Request path: {}", request.path());
         if (request.path().equals("/")) {
@@ -119,6 +125,9 @@ public class SuccessHandler {
         }
     }
 
+    /**
+     * 提供网站图标
+     */
     public Mono<ServerResponse> favicon(ServerRequest request) {
         Resource resource = new ClassPathResource("static/favicon/favicon.ico");
         return ServerResponse
@@ -131,6 +140,9 @@ public class SuccessHandler {
                 });
     }
 
+    /**
+     * 提供静态资源
+     */
     public Mono<ServerResponse> getStatic(ServerRequest request) {
         String path = request.path();
         Resource resource = new ClassPathResource(path);
@@ -145,6 +157,9 @@ public class SuccessHandler {
                 });
     }
 
+    /**
+     * 提供 HTML 页面
+     */
     private Mono<ServerResponse> getHTML(String path) {
         Resource resource = new ClassPathResource("/templates/" + path + ".html");
         LOGGER.info("[GET] HTML request for path: {}", path);
@@ -158,13 +173,9 @@ public class SuccessHandler {
                 });
     }
 
-    private void storeUserInSession(WebSession session, User user) {
-        session.getAttributes().put("id", user.getId());
-        session.getAttributes().put("user", user.getUsername());
-        session.getAttributes().put("email", user.getEmail());
-        session.getAttributes().put("authorities", user.getAuthorities());
-    }
-
+    /**
+     * 获取媒体类型
+     */
     private MediaType getMediaType(String path) {
         if (path.endsWith(".js")) {
             return MediaType.valueOf("application/javascript");
