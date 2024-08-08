@@ -41,7 +41,7 @@ public class CustomAuthenticationEntryPoint implements ServerAuthenticationEntry
         // 设置 HTTP 状态码为 302（Found），表示重定向
         response.setStatusCode(HttpStatus.FOUND);
         
-        // 设置重定向的目标地址为 "/user/login"
+        // 设置重定向的目标地址为 "error"
         response.getHeaders().setLocation(URI.create("/error"));
 
         // 结束响应

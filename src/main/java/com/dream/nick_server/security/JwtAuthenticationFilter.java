@@ -2,7 +2,6 @@ package com.dream.nick_server.security;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.actuate.autoconfigure.metrics.MetricsProperties.Web.Server;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -47,19 +46,24 @@ public class JwtAuthenticationFilter implements WebFilter {
      */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        LOGGER.debug("JwtAuthenticationFilter filter");
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getPath().toString();
+        LOGGER.debug("Path: {}", path);
 
         // 如果路径在白名单中，则直接返回
-       if (isPathWhiteListed(path)){
-           return chain.filter(exchange); 
-       }
-       // 从请求中提取 JWT token
-       String token = request.getHeaders().getFirst("AUTH-TOKEN") != null
-              ? request.getCookies().getFirst("AUTH-TOKEN").getValue()
-              : null;
-       // 如果没有找到 token，则继续过滤链
-       if (token != null) {
+        if (isPathWhiteListed(path)){
+            LOGGER.debug("Path is whitelisted: {}", path);
+            return chain.filter(exchange); 
+        }
+
+        // 从请求中提取 JWT token
+        String token = request.getCookies().getFirst("AUTH-TOKEN") != null
+                ? request.getCookies().getFirst("AUTH-TOKEN").getValue()
+                : null;
+        LOGGER.debug("Token: {}", token);
+
+        if (token != null) {
             LOGGER.info("Token found: {}", token);
             return jwtTokenProvider.getAuthentication(token)
                     .flatMap(authentication -> {
@@ -68,21 +72,27 @@ public class JwtAuthenticationFilter implements WebFilter {
                         return chain.filter(exchange)
                                 .contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
                     })
-                    .onErrorResume(e ->{
+                    .onErrorResume(e -> {
                         // 认证失败，继续过滤链
                         LOGGER.error("Authentication failed: {}", e.getMessage());
                         return chain.filter(exchange);
                     });
-       } else {
+        } else {
             LOGGER.info("Token not found in request");
             return chain.filter(exchange);
-       }
+        }
     }
+    
 
-
+    /**
+     * 判断路径是否在白名单中。
+     *
+     * @param path 请求路径
+     * @return 如果路径在白名单中，则返回 true，否则返回 false
+     */
     private boolean isPathWhiteListed(String path) {
         for (String whiteListedPath : PATH_WHITELIST) {
-            if (path.startsWith(whiteListedPath)) {
+            if (path.matches(whiteListedPath.replace("**", ".*"))) {
                 return true;
             }
         }

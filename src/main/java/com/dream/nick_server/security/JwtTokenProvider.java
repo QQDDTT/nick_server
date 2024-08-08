@@ -31,7 +31,7 @@ public class JwtTokenProvider {
 
     // 用于签名 JWT 的密钥（使用 HS256 算法）
     @SuppressWarnings("deprecation")
-    private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    private static final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 
     // 令牌的过期时间（1 天，单位为毫秒）
     private static final long EXPIRATION_TIME = 86400000;
@@ -65,12 +65,14 @@ public class JwtTokenProvider {
         Date expiryDate = new Date(now.getTime() + EXPIRATION_TIME);
 
         // 构建并返回 JWT 令牌字符串
-        return Jwts.builder()
+        String token = Jwts.builder()
                 .setSubject(username) // 设置令牌的主题（通常为用户名）
                 .setIssuedAt(now) // 设置令牌的签发时间
                 .setExpiration(expiryDate) // 设置令牌的过期时间
                 .signWith(key) // 使用密钥签名令牌
                 .compact(); // 构建并压缩成 JWT 字符串
+        LOGGER.debug("Generated JWT token: {}", token);
+        return token;
     }
 
     /**

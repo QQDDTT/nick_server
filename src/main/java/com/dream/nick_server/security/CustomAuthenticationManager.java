@@ -74,6 +74,6 @@ public class CustomAuthenticationManager implements ReactiveAuthenticationManage
                     }
                })
                .doOnError(error -> LOGGER.error("Error authenticating user: {}", username, error)) // 记录认证失败的错误日志
-               .onErrorResume(error -> Mono.empty()); // 发生错误时返回空的 Mono
+               .onErrorResume(error -> Mono.just(null)); // 发生错误时返回空的 Mono
     }
 }
