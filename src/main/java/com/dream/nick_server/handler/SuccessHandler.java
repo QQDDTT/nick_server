@@ -3,14 +3,19 @@ package com.dream.nick_server.handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.web.server.WebFilterExchange;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import com.dream.nick_server.model.User;
+import com.dream.nick_server.security.CustomAuthenticationManager;
+import com.dream.nick_server.security.CustomAuthenticationSuccessHandler;
 import com.dream.nick_server.service.impl.UserServiceImpl;
 
 import reactor.core.publisher.Mono;
@@ -26,26 +31,73 @@ public class SuccessHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SuccessHandler.class);
 
+    private static final String LOGIN_PATH = "/user/login";
+    private static final String REGISTER_PATH = "/user/register";
+    private static final String UPDATE_PATH = "/user/update";
+    private static final String DELETE_PATH = "/user/delete";
+    private static final String HOME_PATH = "/home";
+
     @Autowired
     private UserServiceImpl userService;
+
+    @Autowired
+    private CustomAuthenticationManager customAuthenticationManager;
+
+    @Autowired
+    private CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler;
 
     /**
      * 处理 POST 请求
      */
     public Mono<ServerResponse> post(ServerRequest request) {
         LOGGER.info("[POST] Request path: {}", request.path());
-        if (request.path().equals("/user/login")) {
-            return getHTML("/home"); // 处理登录请求
-        } else if (request.path().equals("/user/register")) {
+        if (LOGIN_PATH.equals(request.path())) {
+            return userLogin(request); // 处理登录请求
+        } else if (REGISTER_PATH.equals(request.path())) {
             return userRegister(request); // 处理用户注册请求
-        } else if (request.path().equals("/user/update")) {
+        } else if (UPDATE_PATH.equals(request.path())) {
             return userUpdate(request); // 处理用户更新请求
-        } else if (request.path().equals("/user/delete")) {
+        } else if (DELETE_PATH.equals(request.path())) {
             return userDelete(request); // 处理用户删除请求
         } else {
             return getHTML(request.path()); // 处理 POST 请求，返回相应的 HTML 页面
         }
     }
+
+    /**
+     * 处理登录请求
+     * 
+     * @param request 请求
+     * @return 响应
+     */
+    public Mono<ServerResponse> userLogin(ServerRequest request) {
+        LOGGER.info("[POST] userLogin");
+        return request.formData().flatMap(formData -> {
+            String username = formData.getFirst("username");
+            String password = formData.getFirst("password");
+            LOGGER.debug("[POST] userLogin, username: {}, password: {}", username, password);
+            if(username == null || password == null) {
+                return getHTML(LOGIN_PATH);
+            }
+            Authentication authentication = new UsernamePasswordAuthenticationToken(username, password);
+            LOGGER.debug("[POST] userLogin, authentication: {}", authentication);
+            return customAuthenticationManager.authenticate(authentication)
+                   .flatMap(auth -> {
+                        LOGGER.info("[POST] userLogin, authentication: {}", auth);
+                        WebFilterExchange webFilterExchange = new WebFilterExchange(request.exchange(), ex -> Mono.empty());
+                        LOGGER.debug("[POST] userLogin, webFilterExchange: {}", webFilterExchange);
+                        return customAuthenticationSuccessHandler.onAuthenticationSuccess(webFilterExchange, auth)
+                                .then(ServerResponse.status(HttpStatus.FOUND)
+                                        .location(URI.create(HOME_PATH))
+                                        .build());
+                    })
+                    .onErrorResume(e -> {
+                        LOGGER.error("Error logging in user: ", e);
+                        return getHTML(LOGIN_PATH);
+                    });
+        });
+    }
+            
 
     /**
      * 处理用户注册请求

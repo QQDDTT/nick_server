@@ -1,83 +1,131 @@
 package com.dream.nick_server.security;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
 import reactor.core.publisher.Mono;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import com.dream.nick_server.model.User;
+import com.dream.nick_server.service.impl.UserServiceImpl;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 
 import java.security.Key;
 import java.util.Date;
-import java.util.List;
 
 /**
- * JwtTokenProvider 类，用于生成和验证 JWT 令牌，并从令牌中获取认证信息。
+ * JwtTokenProvider 类用于生成和验证 JWT 令牌，以及从令牌中提取认证信息。
  */
 @Component
 public class JwtTokenProvider {
 
-    // 用于签名 JWT 的密钥
+    // 日志记录器，用于记录日志信息
+    private static final Logger LOGGER = LoggerFactory.getLogger(JwtTokenProvider.class);
+
+    // 用于签名 JWT 的密钥（使用 HS256 算法）
+    @SuppressWarnings("deprecation")
     private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
-    // 令牌的过期时间，1 天（以毫秒为单位）
+
+    // 令牌的过期时间（1 天，单位为毫秒）
     private static final long EXPIRATION_TIME = 86400000;
+
+    // 用户服务，用于加载用户信息
+    private final UserServiceImpl userService;
+
+    /**
+     * 构造方法，注入 UserServiceImpl。
+     *
+     * @param userService 用户服务实例
+     */
+    public JwtTokenProvider(UserServiceImpl userService) {
+        this.userService = userService;
+    }
 
     /**
      * 生成 JWT 令牌。
      *
-     * @param authentication 认证信息
-     * @return 生成的 JWT 令牌
+     * @param authentication 认证信息（通常包含用户身份）
+     * @return 生成的 JWT 令牌字符串
      */
+    @SuppressWarnings("deprecation")
     public String generateToken(Authentication authentication) {
+        LOGGER.debug("Create JWT token for authentication: {}", authentication);
+        // 从认证信息中获取用户名
         String username = authentication.getName();
+        // 获取当前时间作为令牌签发时间
         Date now = new Date();
+        // 设置令牌的过期时间
         Date expiryDate = new Date(now.getTime() + EXPIRATION_TIME);
 
+        // 构建并返回 JWT 令牌字符串
         return Jwts.builder()
-                .setSubject(username) // 设置令牌的主题（通常是用户名）
+                .setSubject(username) // 设置令牌的主题（通常为用户名）
                 .setIssuedAt(now) // 设置令牌的签发时间
                 .setExpiration(expiryDate) // 设置令牌的过期时间
-                .signWith(key) // 使用密钥进行签名
+                .signWith(key) // 使用密钥签名令牌
                 .compact(); // 构建并压缩成 JWT 字符串
     }
 
     /**
      * 从 JWT 令牌中获取认证信息。
      *
-     * @param token JWT 令牌
-     * @return 认证信息
+     * @param token JWT 令牌字符串
+     * @return 包含用户信息的认证对象，如果解析失败则返回 Mono.empty()
      */
+    @SuppressWarnings("deprecation")
     public Mono<Authentication> getAuthentication(String token) {
-        Claims claims = Jwts.parser()
-                .setSigningKey(key) // 设置用于解析的签名密钥
+        LOGGER.debug("从令牌中获取认证信息: {}", token);
+        try {
+            // 解析令牌，获取声明体（Claims）
+            Claims claims = Jwts.parser()
+                .setSigningKey(key) // 设置用于验证签名的密钥
+                .build()
                 .parseClaimsJws(token) // 解析 JWT 令牌
                 .getBody();
-        String username = claims.getSubject(); // 获取用户名
+            // 从声明体中获取用户名
+            String username = claims.getSubject();
+            LOGGER.debug("Get username from token: {}", username);
 
-        // 从服务中检索实际的 UserDetails 实例
-        User user = new User("", username, "", "", List.of());
-        return Mono.just(new UsernamePasswordAuthenticationToken(user, "", user.getAuthorities()));
+            // 使用用户名加载用户信息
+            return userService.loadUserByUsername(username)
+                .map(user -> {
+                    LOGGER.debug("Get user from database: {}", user);
+                    // 构建认证对象并返回
+                    return new UsernamePasswordAuthenticationToken(user, token, user.getAuthorities());
+                });
+        } catch (JwtException | IllegalArgumentException e) {
+            // 如果令牌无效，记录错误信息并返回 Mono.empty()
+            LOGGER.error("JWT token is invalid: {}", e.getMessage());
+            return Mono.empty();
+        }
     }
 
     /**
-     * 验证 JWT 令牌。
+     * 验证 JWT 令牌是否有效。
      *
-     * @param token JWT 令牌
-     * @return 如果令牌有效，返回 true；否则，返回 false
+     * @param token JWT 令牌字符串
+     * @return 如果令牌有效则返回 true，否则返回 false
      */
+    @SuppressWarnings("deprecation")
     public boolean validateToken(String token) {
+        LOGGER.debug("Validate JWT token: {}", token);
         try {
+            // 解析令牌以验证其有效性
             Jwts.parser()
-                .setSigningKey(key) // 设置用于解析的签名密钥
+                .setSigningKey(key) // 设置用于验证签名的密钥
+                .build()
                 .parseClaimsJws(token); // 解析 JWT 令牌
-            return true;
-        } catch (Exception e) {
-            return false; // 令牌无效
+            return true; // 如果解析成功则令牌有效
+        } catch (JwtException | IllegalArgumentException e) {
+            LOGGER.error("JWT token is invalid: {}", e.getMessage());
+            return false; // 如果解析失败则令牌无效
         }
     }
 }

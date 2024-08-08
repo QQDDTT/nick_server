@@ -28,7 +28,9 @@ import com.dream.nick_server.model.Authority;
 import com.dream.nick_server.security.CustomAuthenticationConverter;
 import com.dream.nick_server.security.CustomAuthenticationEntryPoint;
 import com.dream.nick_server.security.CustomAuthenticationManager;
+import com.dream.nick_server.security.CustomAuthenticationSuccessHandler;
 import com.dream.nick_server.security.JwtAuthenticationFilter;
+import com.dream.nick_server.security.JwtTokenProvider;
 import com.dream.nick_server.service.impl.UserServiceImpl;
 import com.dream.nick_server.websocket.echo.EchoHandler;
 import com.dream.nick_server.websocket.echo.EchoServer;
@@ -49,33 +51,21 @@ public class SecurityConfig {
      * 配置安全过滤链。
      * 
      * @param http ServerHttpSecurity 对象，用于配置安全设置。
-     * @param authenticationManager 自定义认证管理器。
-     * @param authenticationConverter 自定义认证转换器。
      * @param authenticationEntryPoint 自定义认证入口点。
      * @param jwtAuthenticationFilter JWT 认证过滤器。
      * @return 配置好的 SecurityWebFilterChain 对象。
      */
+    @SuppressWarnings("removal")
     @Bean
     public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http, 
-                                                      CustomAuthenticationManager authenticationManager, 
-                                                      CustomAuthenticationConverter authenticationConverter,
                                                       CustomAuthenticationEntryPoint authenticationEntryPoint,
                                                       JwtAuthenticationFilter jwtAuthenticationFilter) {
-        // 创建认证过滤器并设置认证转换器
-        AuthenticationWebFilter authenticationWebFilter = new AuthenticationWebFilter(authenticationManager);
-        authenticationWebFilter.setServerAuthenticationConverter(authenticationConverter);
-        
         return http
                 .authorizeExchange()
-                    .pathMatchers("/favicon.ico").permitAll() // 允许所有人访问 favicon
-                    .pathMatchers("/").permitAll() // 允许所有人访问主页
-                    .pathMatchers("/index").permitAll() // 允许所有人访问 index 页面
-                    .pathMatchers("/user/register").permitAll() // 允许所有人访问注册页面
-                    .pathMatchers("/user/login").permitAll() // 允许所有人访问登录页面
-                    .pathMatchers("/user/authenticate").permitAll() // 允许所有人访问认证接口
-                    .pathMatchers("/static/**").permitAll() // 允许所有人访问静态资源
-                    .pathMatchers("/ws/echo").permitAll() // 允许所有人访问 WebSocket 连接
-                    .pathMatchers("/home").hasAnyAuthority(Authority.ADMIN.getAuthority(), Authority.USER.getAuthority()) // 需要特定权限
+                    .pathMatchers("/favicon.ico", "/", "/index", "/static/**", "/error", "/user/login", "/user/register")
+                        .permitAll() // 允许所有人访问
+                    .pathMatchers("/echo**", "/files**").permitAll() // 允许所有人访问 WebSocket 连接
+                    // .pathMatchers("/home").hasAnyAuthority(Authority.ADMIN.getAuthority(), Authority.USER.getAuthority()) // 需要特定权限
                     .anyExchange().authenticated() // 其他所有请求都需要认证
                     .and()
                 .csrf().disable() // 禁用 CSRF 保护
@@ -157,16 +147,13 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * 配置自定义认证管理器。
+    /** 
      * 
-     * @param userServiceImpl UserServiceImpl 对象，用于加载用户。
-     * @param passwordEncoder PasswordEncoder 对象，用于密码编码。
-     * @return CustomAuthenticationManager 对象。
+     * 
      */
     @Bean
-    public CustomAuthenticationManager authenticationManager(UserServiceImpl userServiceImpl, PasswordEncoder passwordEncoder) {
-        return new CustomAuthenticationManager(userServiceImpl, passwordEncoder);
+    public CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler(JwtTokenProvider jwtTokenProvider) {
+        return new CustomAuthenticationSuccessHandler(jwtTokenProvider);
     }
 
     /**

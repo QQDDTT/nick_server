@@ -25,16 +25,19 @@ public class CustomAuthenticationManager implements ReactiveAuthenticationManage
 
     private final UserServiceImpl userService; // 用户服务，用于加载用户
     private final PasswordEncoder passwordEncoder; // 密码编码器，用于密码匹配
+    private final JwtTokenProvider jwtTokenProvider; // JWT 令牌提供者，用于生成 JWT 令牌
 
     /**
      * 构造函数注入用户服务和密码编码器。
      *
      * @param userService 用户服务实现类
      * @param passwordEncoder 密码编码器
+     * @param jwtTokenProvider JWT 令牌提供者
      */
-    public CustomAuthenticationManager(UserServiceImpl userService, PasswordEncoder passwordEncoder) {
+    public CustomAuthenticationManager(UserServiceImpl userService, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     /**
@@ -56,15 +59,18 @@ public class CustomAuthenticationManager implements ReactiveAuthenticationManage
                .flatMap(user -> {
                     // 使用密码编码器验证密码是否匹配
                     if (passwordEncoder.matches(password, user.getPassword())) {
+                        String token = jwtTokenProvider.generateToken(authentication); // 生成 JWT 令牌
+                        LOGGER.info("Generated JWT token for user: {}", username); // 记录生成 JWT 令牌的日志
                         // 创建认证成功的 Authentication 对象
                         Authentication auth = new UsernamePasswordAuthenticationToken(
                             user, // 用户对象
-                            user.getPassword(), // 用户密码
+                            token, // JWT 令牌
                             user.getAuthorities() // 用户权限
                         );
                         return Mono.just(auth); // 返回认证成功的对象
                     } else {
-                        return Mono.empty(); // 返回空的 Mono 表示认证失败
+                        LOGGER.debug("Invalid password for user: {}", username);
+                        return Mono.just(null); // 返回空的 Mono 表示认证失败
                     }
                })
                .doOnError(error -> LOGGER.error("Error authenticating user: {}", username, error)) // 记录认证失败的错误日志

@@ -33,7 +33,7 @@ public class CustomAuthenticationEntryPoint implements ServerAuthenticationEntry
     @Override
     public Mono<Void> commence(ServerWebExchange exchange, AuthenticationException e) {
         // 记录认证失败信息
-        LOGGER.info("Authentication failed: {}", e.getMessage());
+        LOGGER.info("Authentication failed for path {}: {}", exchange.getRequest().getPath(), e.getMessage());
 
         // 获取 ServerHttpResponse 对象
         ServerHttpResponse response = exchange.getResponse();
@@ -42,7 +42,7 @@ public class CustomAuthenticationEntryPoint implements ServerAuthenticationEntry
         response.setStatusCode(HttpStatus.FOUND);
         
         // 设置重定向的目标地址为 "/user/login"
-        response.getHeaders().setLocation(URI.create("/user/login"));
+        response.getHeaders().setLocation(URI.create("/error"));
 
         // 结束响应
         return response.setComplete();
